@@ -146,9 +146,3 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# RunPod REST API 설정
-RUNPOD_API_URL = config('RUNPOD_API_URL')
-RUNPOD_API_KEY = config('RUNPOD_API_KEY')
-RUNPOD_MODEL_ID = config('RUNPOD_MODEL_ID', default=None)
-RUNPOD_TIMEOUT = config('RUNPOD_TIMEOUT', default='30', cast=int)

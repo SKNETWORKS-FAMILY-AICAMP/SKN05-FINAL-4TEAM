@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commit - 이력서 작성</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Noto Sans', sans-serif;
+            background: #f9fafc;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 50px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .section {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+
+        .question {
+            margin-bottom: 20px;
+        }
+
+        .question label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .question textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+            resize: none;
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .basic-info {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .basic-info label {
+            font-weight: bold;
+        }
+
+        .basic-info input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        button.submit {
+            background-color: #003366;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto 0;
+            text-align: center;
+        }
+
+        button.submit:hover {
+            background-color: #002244;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="section">
+            <h2>이력서 작성 폼</h2>
+
+            <div class="section">
+                <h2>기본 정보</h2>
+                <div class="basic-info">
+                    <div>
+                        <label for="name">이름</label>
+                        <input type="text" id="name" placeholder="이름을 입력하세요">
+                    </div>
+                    <div>
+                        <label for="phone">전화번호</label>
+                        <input type="text" id="phone" placeholder="전화번호를 입력하세요">
+                    </div>
+                    <div>
+                        <label for="email">이메일</label>
+                        <input type="email" id="email" placeholder="이메일을 입력하세요">
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>1. 주요 프로젝트 경험</h2>
+                <div class="question">
+                    <label for="project-experience">본인의 주요 프로젝트 경험 1개를 구체적으로 작성하세요 (프로젝트 목표, 수행 역할, 사용 기술, 성과 포함)</label>
+                    <textarea id="project-experience" oninput="updateCharCount(this)"></textarea>
+                    <span class="char-count">0/500</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>2. 문제 해결 사례</h2>
+                <div class="question">
+                    <label for="problem-solving">업무 또는 학업에서 직면했던 가장 큰 문제를 해결했던 경험을 구체적으로 기술하세요 (문제 상황, 해결 방법, 결과)</label>
+                    <textarea id="problem-solving" oninput="updateCharCount(this)"></textarea>
+                    <span class="char-count">0/500</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>3. 팀워크 경험</h2>
+                <div class="question">
+                    <label for="teamwork-experience">팀 프로젝트나 협업 과정에서 겪었던 도전과 이를 해결하기 위해 기여했던 점을 구체적으로 기술하세요</label>
+                    <textarea id="teamwork-experience" oninput="updateCharCount(this)"></textarea>
+                    <span class="char-count">0/500</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>4. 자기 개발 노력</h2>
+                <div class="question">
+                    <label for="self-development">최근 1년간 본인이 가장 몰입했던 자기 개발 활동 또는 학습 경험에 대해 구체적으로 기술하세요</label>
+                    <textarea id="self-development" oninput="updateCharCount(this)"></textarea>
+                    <span class="char-count">0/500</span>
+                </div>
+            </div>
+
+
+            <button class="submit" onclick="submitForm()">제출</button>
+        </div>
+    </div>
+
+    <script>
+        function updateCharCount(textarea) {
+            const charCount = textarea.value.length;
+            const maxChar = 500;
+            textarea.nextElementSibling.textContent = `${charCount}/${maxChar}`;
+        }
+
+        function submitForm() {
+            alert("이력서가 성공적으로 제출되었습니다.");
+        }
+    </script>
+</body>
+</html>

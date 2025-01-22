@@ -97,68 +97,77 @@
     </style>
 </head>
 <body>
-
     <div class="container">
-        <div class="section">
-            <h2>이력서 작성 폼</h2>
+        <!-- 메세지 표시 블록 -->
+        {% if messages %}
+            <div>
+                {% for message in messages %}
+                    <div class="alert {{message.tags}}">{{message}}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
 
+        <!-- 폼 시작 -->
+        <form method="post" action="{% url 'resume_form' %}">
+            {% csrf_token %}
             <div class="section">
+                <h1>이력서</h1>
+                <div class="section">
                 <h2>기본 정보</h2>
                 <div class="basic-info">
                     <div>
                         <label for="name">이름</label>
-                        <input type="text" id="name" placeholder="이름을 입력하세요">
+                        <input type="text" id="name" name="name" placeholder="이름을 입력하세요">
                     </div>
                     <div>
                         <label for="phone">전화번호</label>
-                        <input type="text" id="phone" placeholder="전화번호를 입력하세요">
+                        <input type="text" id="phone" name="phone" placeholder="전화번호를 입력하세요">
                     </div>
                     <div>
                         <label for="email">이메일</label>
-                        <input type="email" id="email" placeholder="이메일을 입력하세요">
+                        <input type="email" id="email" name="email" placeholder="이메일을 입력하세요">
                     </div>
                 </div>
             </div>
-
+        
             <div class="section">
                 <h2>1. 주요 프로젝트 경험</h2>
                 <div class="question">
-                    <label for="project-experience">본인의 주요 프로젝트 경험 1개를 구체적으로 작성하세요 (프로젝트 목표, 수행 역할, 사용 기술, 성과 포함)</label>
-                    <textarea id="project-experience" oninput="updateCharCount(this)"></textarea>
+                    <label for="project-experience">본인의 주요 프로젝트 경험을 구체적으로 작성하세요</label>
+                    <textarea id="project-experience" name="project_experience" oninput="updateCharCount(this)"></textarea>
                     <span class="char-count">0/500</span>
                 </div>
             </div>
-            
+        
             <div class="section">
                 <h2>2. 문제 해결 사례</h2>
                 <div class="question">
-                    <label for="problem-solving">업무 또는 학업에서 직면했던 가장 큰 문제를 해결했던 경험을 구체적으로 기술하세요 (문제 상황, 해결 방법, 결과)</label>
-                    <textarea id="problem-solving" oninput="updateCharCount(this)"></textarea>
+                    <label for="problem-solving">문제 해결 사례를 작성하세요</label>
+                    <textarea id="problem-solving" name="problem_solving" oninput="updateCharCount(this)"></textarea>
                     <span class="char-count">0/500</span>
                 </div>
             </div>
-            
+        
             <div class="section">
                 <h2>3. 팀워크 경험</h2>
                 <div class="question">
-                    <label for="teamwork-experience">팀 프로젝트나 협업 과정에서 겪었던 도전과 이를 해결하기 위해 기여했던 점을 구체적으로 기술하세요</label>
-                    <textarea id="teamwork-experience" oninput="updateCharCount(this)"></textarea>
+                    <label for="teamwork-experience">팀워크 경험을 작성하세요</label>
+                    <textarea id="teamwork-experience" name="teamwork_experience" oninput="updateCharCount(this)"></textarea>
                     <span class="char-count">0/500</span>
                 </div>
             </div>
-            
+        
             <div class="section">
                 <h2>4. 자기 개발 노력</h2>
                 <div class="question">
-                    <label for="self-development">최근 1년간 본인이 가장 몰입했던 자기 개발 활동 또는 학습 경험에 대해 구체적으로 기술하세요</label>
-                    <textarea id="self-development" oninput="updateCharCount(this)"></textarea>
+                    <label for="self-development">자기 개발 노력 내용을 작성하세요</label>
+                    <textarea id="self-development" name="self_development" oninput="updateCharCount(this)"></textarea>
                     <span class="char-count">0/500</span>
                 </div>
             </div>
-
-
-            <button class="submit" onclick="submitForm()">제출</button>
-        </div>
+        
+            <button class="submit" type="submit">제출</button>
+        </form>        
     </div>
 
     <script>

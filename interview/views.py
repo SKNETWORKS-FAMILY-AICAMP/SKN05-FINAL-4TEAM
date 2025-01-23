@@ -60,16 +60,21 @@ def generate_questions(request):
     질문 생성하는 API 엔드 포인트
     """
     user_id = request.data.get('user_id')
-    evaluation_metrics = request.data.get('evaluation_metrics',[])
-
-    if not user_id or not evaluation_metrics:
-        return Response({"error":"user_id 와 evaluation_metrics는 필수 항목입니다."}, status=400)
+    if not user_id:
+        return Response({"error": "user_id는 필수입니다."}, status=400)
     
-    # get_resume_text 함수로 이력서 데이터 가져오기
-    resume_text = get_resume_text(user_id)
-    if not resume_text:
-        return Response({"error": "해당 사용자의 이력서를 찾을 수 없습니다."}, status=404)
+    evaluation_metrics = ["문제 해결 능력", "팀워크", "기술 깊이"]
     
-    # gpt 호출
-    questions = generate_q(resume_text, evaluation_metrics)
-    return Response({"questions": questions})
+    try:
+        # get_resume_text 함수로 이력서 데이터 가져오기
+        resume_text = get_resume_text(user_id)
+        if not resume_text:
+            return Response({"error": "해당 사용자의 이력서를 찾을 수 없습니다."}, status=404)
+    
+        # gpt 호출
+        questions = generate_q(resume_text, evaluation_metrics)
+        return Response({"questions": questions})
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+    

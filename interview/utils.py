@@ -19,6 +19,8 @@ def call_whisper(audio_file_path):
     
 openai.api_key = settings.OPENAI_API_KEY
 
+
+
 def generate_q(resume_text, evaluation_metrics):
     prompt = f"""
     아래는 한 사람의 이력서 내용입니다. 이 이력서를 바탕으로 다음 기준에 따라 질문을 생성하세요:

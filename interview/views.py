@@ -5,6 +5,7 @@ from .models import Resume
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q
+from django.views.decorators.csrf import csrf_exempt
 
 # Create your views here.
 def resume_form(request):
@@ -22,6 +23,7 @@ def resume_form(request):
         form = ResumeForm()
 
     return render(request, 'resume_form.html', {'form': form})
+
 
 def get_resume_text(user_id):
     """
@@ -51,6 +53,7 @@ def get_resume_text(user_id):
         return None
     
 
+@csrf_exempt
 @api_view(['POST'])
 def generate_questions(request):
     """

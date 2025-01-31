@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 모의면접 시스템</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    </head>
+    <body>
+    <!-- 헤더 -->
+    <header class="header">
+    <div class="logo">COMMIT</div>
+    <nav class="nav">
+        <a href="{% url 'resume_form' %}" >RESUME UPLOAD</a>
+    </nav>
+    </header>
+
+    <!-- 홈 섹션 -->
+    <section id="home">
+    <div>
+        <h1>AI 모의면접으로, <br>자신감을 키우세요!</h1>
+        <p>맞춤형 질문과 피드백으로 실력을 한 단계 높여보세요.</p>
+        <a href="#main" class="cta-button">더 알아보기</a>
+        <a href="#start" class="cta-button">시작하기</a>
+    </div>
+    </section>
+
+    <!-- 메인 섹션 -->
+    <section id="main">
+    <div>
+        <h2>AI 기반으로 실전 면접처럼 준비하세요!</h2>
+        <p>AI 모의면접 시스템은 면접 질문 생성, 답변 분석, 피드백 제공 등 다양한 기능을 통해 실전처럼 면접 준비를 도와줍니다.</p>
+        <div class="features">
+        <div class="feature-card">
+            <h3>질문 생성</h3>
+            <p>개인 맞춤형 질문을 자동으로 생성합니다.</p>
+        </div>
+        <div class="feature-card">
+            <h3>답변 피드백</h3>
+            <p>AI가 구체적인 개선점을 분석하고 제시합니다.</p>
+        </div>
+        <div class="feature-card">
+            <h3>모의 면접</h3>
+            <p>실전처럼 시간 제한을 두고 연습할 수 있습니다.</p>
+        </div>
+        <div class="feature-card">
+            <h3>성과 보고서</h3>
+            <p>면접 성과를 데이터 기반으로 분석해 제공합니다.</p>
+        </div>
+        </div>
+        <p>AI를 활용한 모의면접으로, 자신의 강점과 약점을 파악하고 실력을 체계적으로 향상시킬 수 있습니다.</p>
+    </div>
+    </section>
+
+    <!-- Commit의 장점 섹션 -->
+    <section id="benefits">
+    <div class="container">
+        <h2>Commit의 장점</h2>
+        <div class="benefits-container">
+            <div class="benefit-card">
+                <div class="benefit-icon">🎯</div>
+                <h3>맞춤형 AI 면접</h3>
+                <p>최신 AI 기술을 활용한 면접 준비 도구로, 면접 과정의 전반을 혁신적으로 지원합니다.</p>
+                <p>면접 질문 생성부터 응답 분석, 데이터 기반 피드백 제공까지 한 번에 해결합니다.</p>
+            </div>
+            <div class="benefit-card">
+                <div class="benefit-icon">📊</div>
+                <h3>심층 분석 시스템</h3>
+                <p>심층 분석 시스템을 통해 약점을 명확히 파악하고 개선 방향을 구체적으로 제시합니다.</p>
+                <p>실제 면접에서 자신감을 높이고, 준비 과정을 효과적으로 계획할 수 있습니다.</p>
+            </div>
+            <div class="benefit-card">
+                <div class="benefit-icon">📈</div>
+                <h3>데이터 기반 성장</h3>
+                <p>데이터 기반 성과 보고서를 통해 자신의 발전 과정을 객관적으로 평가할 수 있습니다.</p>
+                <p>강점 강화와 약점 보완이 동시에 이루어지는 체계적인 성장이 가능합니다.</p>
+            </div>
+        </div>
+    </div>
+    </section>
+
+    <!-- 모의 면접 시작하기 섹션 -->
+    <section id="ready">
+    <div class="container">
+        <div class="container">
+        <h2>모의 면접 진행 방식</h2>
+        <div class="description">
+            <p>AI가 제공하는 피드백을 통해 자신만의 면접 전략을 세우고, 꾸준히 실력을 개선하세요. </p> 
+            <p>모의 면접 진행 중 얻은 피드백은 사용자 맞춤형으로 제공되며, 이를 통해 자신의 성장 과정을 명확히 확인할 수 있습니다.</p>
+        </div>
+
+        <div class="step-container">
+            <div class="step">
+                <div class="step-number">STEP 1</div>
+                <h3>이력서 작성</h3>
+                <p>폼에 맞춰 이력서를 작성하여 면접 준비를 시작하세요.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">STEP 2</div>
+                <h3>공고 선택</h3>
+                <p>지원하려는 공고를 선택하면, AI가 구체적인 개선점을 제공합니다.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">STEP 3</div>
+                <h3>모의 면접 버전 선택</h3>
+                <p>연습 모드와 실전 모드 중 원하는 방식을 선택해 면접을 준비하세요.</p>
+            </div>
+            <div class="step">
+                <div class="step-number">STEP 4</div>
+                <h3>환경 점검</h3>
+                <p>면접 전, 음성 답변 기능 및 장비 상태를 확인해 주세요.</p>
+            </div>
+        </div>
+        </div>
+    </section>
+
+    <section id="start">
+        <div class="container">
+        <h2>모의 면접 시작하기</h2>
+        <div class="single-box" style="display: flex; justify-content: center;">
+            <div class="section" style="width: 90%; max-width: 1200px; text-align: center;">
+            <h3>사람인 공고 추천</h3>
+            <p>아래 추천 공고를 확인하고 관심 있는 공고를 선택하세요.</p>
+            <div id="saramin-jobs" style="display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; border: 1px solid #ddd; padding: 10px; border-radius: 5px; gap: 15px;">
+                <!-- 예시 공고 데이터 -->
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="1" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>웹 개발자 채용</strong><br>
+                <span>회사: ABC Tech</span><br>
+                <span>위치: 서울 강남구</span><br>
+                <span>경력: 신입</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="2" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>AI 엔지니어 모집</strong><br>
+                <span>회사: XYZ AI Solutions</span><br>
+                <span>위치: 경기 성남시</span><br>
+                <span>경력: 3년 이상</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="3" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>프론트엔드 개발자</strong><br>
+                <span>회사: EFG Web Studio</span><br>
+                <span>위치: 부산 해운대구</span><br>
+                <span>경력: 1년 이상</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="4" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>백엔드 개발자</strong><br>
+                <span>회사: GH Solutions</span><br>
+                <span>위치: 서울 중구</span><br>
+                <span>경력: 2년 이상</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="5" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>데이터 분석가</strong><br>
+                <span>회사: Insight Analytics</span><br>
+                <span>위치: 경기 성남시</span><br>
+                <span>경력: 신입</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="6" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>UI/UX 디자이너</strong><br>
+                <span>회사: Creative Studio</span><br>
+                <span>위치: 부산 해운대구</span><br>
+                <span>경력: 1년 이상</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="7" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>DevOps 엔지니어</strong><br>
+                <span>회사: CloudSync</span><br>
+                <span>위치: 대전 유성구</span><br>
+                <span>경력: 3년 이상</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="8" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>프로젝트 매니저</strong><br>
+                <span>회사: AgileWorks</span><br>
+                <span>위치: 제주 제주시</span><br>
+                <span>경력: 5년 이상</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="9" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>머신러닝 엔지니어</strong><br>
+                <span>회사: AI Future</span><br>
+                <span>위치: 광주 북구</span><br>
+                <span>경력: 2년 이상</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="10" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>풀스택 개발자</strong><br>
+                <span>회사: TechHive</span><br>
+                <span>위치: 인천 남동구</span><br>
+                <span>경력: 신입</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>
+                <div class="job-posting" onclick="selectJob(this)" data-job-id="11" style="min-width: 250px; border: 1px solid #ccc; padding: 10px; border-radius: 5px; background: #f9f9f9; cursor: pointer;">
+                <strong>데브옵스 엔지니어</strong><br>
+                <span>회사: NextInfra</span><br>
+                <span>위치: 서울 강남구</span><br>
+                <span>경력: 4년 이상</span><br>
+                <a href="#" style="color: #00509e; text-decoration: underline;">공고 자세히 보기</a>
+                </div>              
+            </div>
+            <div class="split-box">
+            <div class="section">
+                <h3>연습 모의 면접</h3>
+                <p>시간 제한 없이 다양한 질문을 통해 면접을 연습할 수 있습니다.</p>
+                <p>맞춤형 피드백으로 자신의 성장 과정을 확인하세요.</p>
+                <button 
+                    type="button" 
+                    onclick="startPractice()" 
+                    id="practiceBtn" 
+                    disabled
+                    data-url="{% url 'practice_interview' user_id=1 %}">
+                    시작하기</button>
+            </div>
+            <div class="section">
+                <h3>실전 모의 면접</h3>
+                <p>제한된 시간 안에 질문에 답변하여 실전 경험을 쌓아보세요.</p>
+                <p>실제 면접과 유사한 압박감을 체험하며, 긴장 관리 능력을 키우세요.</p>
+                <button 
+                    type="button" 
+                    onclick="startReal()" 
+                    id="realBtn" 
+                    disabled
+                    data-url="{% url 'interview' user_id=1 %}">
+                    시작하기</button>
+            </div>
+            </div>
+        </div>
+    </section>
+    <footer>
+    &copy; 2025 Commit. All rights reserved.
+    </footer>
+
+    <script src="{% static 'js/main.js' %}"></script>
+</body>
+</html>

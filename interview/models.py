@@ -26,3 +26,16 @@ class Resume(models.Model):
     def __str__(self):
         return self.name
     
+
+# questions
+class Question(models.Model):
+    user_id = models.IntegerField()
+    text = models.TextField()
+    category = models.CharField(max_length=100)
+    order = models.IntegerField()
+    is_used = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"User {self.user_id} | {self.category} | Order {self.order}"
+    

@@ -34,6 +34,9 @@ AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
 
+# openAI API 키 설정
+OPENAI_API_KEY = config('OPENAI_API_KEY')
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -151,3 +154,4 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 #RunPod 설정
 RUNPOD_API_KEY = config("RUNPOD_API_KEY", default="")
 STT_ENDPOINT = config("STT_endpoint", default="")
+LLM_ENDPOINT = config("LLM_endpoint", default="")

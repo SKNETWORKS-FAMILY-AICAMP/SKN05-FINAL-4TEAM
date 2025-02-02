@@ -22,11 +22,16 @@
         <div class="question-box" id="questionBox">
             <!-- 질문 번호와 총 면접 시간을 한 줄에 배치 -->
             <div class="question-header">
-                <h3 id="questionNumber">Q1/08</h3>
+                <h3 id="questionNumber">Q{{ current_index }}/{{ total_questions }}</h3>
                 <span class="total-time">총 면접 시간: <span id="totalTime">00:00</span></span>
             </div>
-            <p id="questionText">입사 후, 자신의 모습은 어떨 것이라고 생각하나요?</p>
+            <p id="questionText">{{ question }}</p>
         </div>
+
+        <!-- 서버에서 전달받은 user_id와 question_id를 숨겨진 input에 저장 -->
+        <input type="hidden" id="questionId" value="{{ question_id }}">
+        <input type="hidden" id="userId" value="{{ user_id }}">
+        <input type="hidden" id="totalQuestions" value="{{ total_questions }}">
 
         <!-- 면접관과 타이머 섹션 -->
         <div class="interview-layout">

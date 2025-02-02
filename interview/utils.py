@@ -43,7 +43,7 @@ def generate_q(resume_text, evaluation_metrics):
     - 팀워크 경험 관련 질문: 팀워크 능력을 평가하기 위한 질문(예:"팀 협업 중 발생한 갈등을 어떻게 해결했는지 설명해주세요.")
     - 자기 개발 노력 관련 질문: 자기 개발 능력과 학습 의지를 평가하기 위한 질문(예: "최근 1년 동안 스스로 발전시키기 위해 가장 집중한 활동은 무엇인가요?")
 
-    각 질문 유형별로 2개의 새로운 질문을 JSON 형식으로 반환해주세요.
+    각 질문 유형별로 2개의 새로운 질문을 **줄바꿈 형식으로 반환**하세요.
     """
     try:
         response = openai.ChatCompletion.create(
@@ -55,8 +55,13 @@ def generate_q(resume_text, evaluation_metrics):
             ],
             temperature=0.7,
         )
-        questions = response['choices'][0]['message']['content']
-        return questions
+        questions_text = response['choices'][0]['message']['content']
+
+        # 줄바꿈 기준으로 질문 분리
+        questions_list = [q.strip() for q in questions_text.split("\n") if q.strip()]
+
+        return questions_list  # 리스트 반환
+
     except Exception as e:
         return f"Error: {str(e)}"
     

@@ -8,5 +8,5 @@ urlpatterns = [
     path('generate_questions/', views.generate_questions, name='generate_questions'),
     path('practice_interview/<int:user_id>/', views.practice_interview_page, name='practice_interview'),
     path('interview/<int:user_id>/', views.interview_page, name='interview'),
-    path('next_question/<int:user_id>', views.next_question, name='next_question'),
+    path('next_question/<int:user_id>/', views.next_question, name='next_question'),
 ]

@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction 
 
 
 # 메인 페이지 렌더링
@@ -25,9 +26,23 @@ def resume_form(request):
     if request.method == 'POST':
         form = ResumeForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "이력서가 성공적으로 제출되었습니다!")
-            return redirect('resume_form')
+            # 1. 이력서 저장
+            resume = form.save()
+
+            # 2. 질문 생성 및 저장
+            try:
+                questions, error = generate_questions_from_resume(resume.id)
+                if error:
+                    messages.error(request, f"질문 생성 중 오류가 발생했습니다: {error}")
+                    return redirect('resume_form')
+
+                # 성공 메시지 표시
+                messages.success(request, "이력서 제출 및 질문 생성이 완료되었습니다!")
+                return redirect('practice_interview', user_id=resume.id)
+
+            except Exception as e:
+                messages.error(request, f"질문 생성 중 예외가 발생했습니다: {str(e)}")
+                return redirect('resume_form')
         else:
             messages.error(request, "폼 유효성 검사에 실패했습니다. 입력값을 확인해주세요.")
 
@@ -80,27 +95,30 @@ def generate_questions_from_resume(user_id, evaluation_metrics=None):
     evaluation_metrics = ["질문 이해도", "논리적 전개", "내용의 구체성", "문제 해결 접근 방식"]
     questions = generate_q(resume_text, evaluation_metrics)
     
-    # 디버깅: GPT-4 응답 확인
-    print("GPT-4 질문 응답:", questions) 
+    # GPT 응답 확인
+    print("GPT 질문 응답:", questions) 
     
     if not questions or "Error" in questions:
         return None, f"질문 생성 실패: {questions}"
 
-    # 3. 질문 저장
-    # try:
-    #     questions_list = [q.strip() for q in questions.split("\n") if q.strip()]  # 줄바꿈 기준으로 질문 분리
-    #     for idx, question_text in enumerate(questions_list):
-    #         Question.objects.create(
-    #             user_id=user_id,
-    #             text=question_text,
-    #             category=evaluation_metrics[idx % len(evaluation_metrics)],
-    #             order=idx + 1
-    #         )
-    #     return questions_list, None
-    # except Exception as e:
-    #     return None, f"질문 저장 실패: {str(e)}"
+    try:
+        questions_list = [
+            q.strip() for q in questions
+            if q.strip() and not q.startswith("- ")  # 제목("- ")으로 시작하는 줄 제외
+        ]
+        with transaction.atomic():
+            for idx, question_text in enumerate(questions_list):
+                Question.objects.create(
+                    user_id=user_id,
+                    text=question_text,
+                    category=evaluation_metrics[idx % len(evaluation_metrics)],  # 카테고리 순환
+                    order=idx + 1
+                )
+    except Exception as e:
+        return None, f"질문 저장 실패: {str(e)}"
 
-    return questions, None
+    # return questions, None
+    return questions_list, None
 
 
 # 질문 생성 API
@@ -135,20 +153,21 @@ def practice_interview_page(request, user_id):
     연습 면접 페이지를 렌더링하고 질문을 표시
     """
     # 해당 사용자의 질문 가져오기
-    questions = Question.objects.filter(user_id=user_id).order_by('order')
+    question = Question.objects.filter(user_id=user_id, is_used=False).order_by('order').first()
 
     # 질문이 없는 경우 처리
-    if not questions.exists():
+    if not question:
         return render(request, 'interview_practice.html', {'error': '사용 가능한 질문이 없습니다.'})
 
-    # 첫 번째 질문 가져오기
-    question = questions.first()
+    total_questions = Question.objects.filter(user_id=user_id).count()
 
     # 템플릿에 전달할 데이터
     return render(request, 'interview_practice.html', {
-        'questions': list(questions.values_list('text', flat=True)),  # 질문 텍스트 리스트
-        'total_questions': questions.count(),  # 총 질문 수
-        'question_index': 0,  # 첫 번째 질문 인덱스
+        'question': question.text, 
+        'question_id': question.id,
+        'user_id': user_id,
+        'current_index': 1,
+        'total_questions': total_questions,
     })
 
 
@@ -162,7 +181,15 @@ def interview_page(request, user_id):
     if not question:
         return render(request, 'interview.html', {'error': '사용 가능한 질문이 없습니다.'})
 
-    return render(request, 'interview.html', {'question': question.text, 'question_id': question.id})
+    total_questions = Question.objects.filter(user_id=user_id).count()
+    
+    return render(request, 'interview.html', {
+        'question': question.text, 
+        'question_id': question.id,
+        'user_id': user_id,
+        'current_index': 1,
+        'total_questions': total_questions,
+    })
 
 
 # 다음 질문 API(실전 면접)
@@ -188,6 +215,8 @@ def next_question(request, user_id):
         if not next_question:
             return JsonResponse({'error': '모든 질문이 완료되었습니다.'})
 
+        # 디버깅용 로그 추가
+        # print(f"다음 질문: {next_question.text}, ID: {next_question.id}")
         return JsonResponse({'question': next_question.text, 'question_id': next_question.id})
 
     return JsonResponse({'error': '잘못된 요청 방식입니다.'}, status=400)

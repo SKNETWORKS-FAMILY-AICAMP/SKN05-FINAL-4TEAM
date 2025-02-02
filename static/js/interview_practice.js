@@ -1,27 +1,20 @@
-// 아직 질문생성모델과 연결되기 전
-const questions = [
-    "본인의 장점과 단점을 설명하고, 이를 극복하기 위해 어떤 노력을 하고 있는지 말씀해 주세요.",
-    "최근 성취한 가장 큰 성공은 무엇이며, 이를 위해 어떤 과정을 거쳤는지 말씀해 주세요.",
-    "팀 프로젝트에서 갈등 상황이 발생했을 때 이를 해결하기 위해 어떤 역할을 했는지 설명해 주세요."
-];
-
+let questions = [];
 let currentQuestionIndex = 0;
 let timeLeft = 90;
 let totalTimeElapsed = 0;
 let isRecording = false;
 let questionTimerInterval;
 let totalTimerInterval;
-let currentRecordingTime = 0;
-let recordingTimerInterval;
 
 const timerElement = document.getElementById("timer");
 const totalTimerElement = document.getElementById("totalTimer");
 const questionTextElement = document.getElementById("questionText");
-const questionBox = document.getElementById("questionBox");
 const startButton = document.getElementById("startRecording");
 const stopButton = document.getElementById("stopRecording");
-const completionBox = document.getElementById("completionBox");
-const finalTotalTimeElement = document.getElementById("finalTotalTime");
+
+const questionIdInput = document.getElementById("questionId");  // 현재 질문의 ID
+const userIdInput = document.getElementById("userId");            // user_id
+const totalQuestionsInput = document.getElementById("totalQuestions");  // 총 질문 수
 
 function updateTimerDisplay() {
     document.getElementById("elapsedTimer").textContent = currentRecordingTime;
@@ -72,20 +65,50 @@ function startTotalTimer() {
 }
 
 function updateQuestionNumber() {
-    const questionNumberElement = document.querySelector('.question-box h3');
-    questionNumberElement.textContent = `Q${currentQuestionIndex + 1}/${questions.length}`;
+    // 총 질문 수와 현재 질문 인덱스를 가져옴
+    const totalQuestions = parseInt(document.getElementById("totalQuestions").value);
+    const questionNumberElement = document.getElementById("questionNumber");
+    // 질문 번호 업데이트
+    questionNumberElement.textContent = `Q${currentQuestionIndex + 1}/${totalQuestions}`;
 }
 
+// AJAX를 이용해 다음 질문을 서버에서 가져오는 함수
 function nextQuestion() {
-    if (currentQuestionIndex < questions.length - 1) {
-        currentQuestionIndex++;
-        timeLeft = 90;
-        questionTextElement.textContent = questions[currentQuestionIndex];
-        updateTimerDisplay();
-        updateQuestionNumber();
-    } else {
-        completeInterview();
-    }
+    const userId = userIdInput.value;
+    const currentQuestionId = questionIdInput.value;
+
+    // 서버에 POST 요청으로 다음 질문 가져오기
+    fetch(`/next_question/${userId}/`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: `question_id=${currentQuestionId}`,
+    })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.error) {
+                // 더 이상 질문이 없는 경우 인터뷰 종료 처리
+                completeInterview();
+            } else {
+                // 다음 질문을 화면에 표시
+                questionTextElement.textContent = data.question;
+                questionIdInput.value = data.question_id; // 새로운 질문 ID 업데이트
+                currentQuestionIndex++;
+                updateQuestionNumber(); // 질문 번호 UI 업데이트
+
+                timeLeft = 90; // 타이머 초기화
+                updateTimerDisplay();
+
+                startButton.disabled = false;
+                stopButton.disabled = true;
+
+                isRecording = false;
+            }
+        })
+        .catch((error) => {
+            console.error("다음 질문을 불러오는 중 오류 발생:", error);
+        });
 }
 
 function completeInterview() {
@@ -104,65 +127,56 @@ function completeInterview() {
     document.getElementById("completionModal").style.display = "block";
 }
 
-function updateProgress() {
-    const progress = (currentQuestionIndex / questions.length) * 100;
-    document.getElementById('progressBar').style.width = `${progress}%`;
-    document.getElementById('questionNumber').textContent = currentQuestionIndex + 1;
-    document.getElementById('totalQuestions').textContent = questions.length;
-}
-
-// 페이지 로드 시 바로 총 타이머 시작
-document.addEventListener('DOMContentLoaded', () => {
-    startTotalTimer();  // 페이지 로드 시 총 타이머 시작
-    updateProgress();   // 초기 진행 상태 표시
-    updateQuestionNumber();  // 초기 질문 번호 설정
-});
-
 function stopRecording() {
     if (isRecording) {
         isRecording = false;
-        document.getElementById('recordingIndicator').style.display = 'none';
         clearInterval(questionTimerInterval);
-        startButton.disabled = false;
-        stopButton.disabled = true;
+        document.getElementById("startRecording").disabled = false;
+        document.getElementById("stopRecording").disabled = true;
         timeLeft = 90; // 타이머 리셋
-        updateTimerDisplay(); // 타이머 표시 업데이트
-        updateProgress();
+        updateTimerDisplay();
         nextQuestion();
     }
-}
-
-function resetRecordingTimer() {
-    currentRecordingTime = 0;
-    updateTimerDisplay();
 }
 
 startButton.addEventListener("click", () => {
     if (!isRecording) {
         isRecording = true;
-        document.getElementById("startRecording").disabled = true;
-        document.getElementById("stopRecording").disabled = false;
-        resetRecordingTimer();  // 녹음 시작 전 타이머 리셋
-
-        recordingTimerInterval = setInterval(() => {
-            currentRecordingTime++;
-            updateTimerDisplay();
-        }, 1000);
-
-        if (totalTimeElapsed === 0) startTotalTimer();
+        startButton.disabled = true; // "녹음 시작" 버튼 비활성화
+        stopButton.disabled = false; // "녹음 종료" 버튼 활성화
+        startQuestionTimer();  // 녹음 시작과 함께 타이머 시작
     }
 });
 
 stopButton.addEventListener("click", () => {
     if (isRecording) {
-        isRecording = false;
-        clearInterval(recordingTimerInterval);
-        document.getElementById("startRecording").disabled = false;
-        document.getElementById("stopRecording").disabled = true;
-        resetRecordingTimer();  // 녹음 종료 시 타이머 리셋
-        nextQuestion();
+        stopRecording();
     }
 });
+
+document.addEventListener("DOMContentLoaded", async () => {
+    const userId = userIdInput.value;
+
+    try {
+        const response = await fetch(`/get_questions/${userId}/`);
+        const data = await response.json();
+        if (data.questions) {
+            questions = data.questions;
+            updateQuestionNumber();
+            startTotalTimer();
+        } else {
+            console.error("질문 데이터를 불러오는 데 실패했습니다.");
+        }
+    } catch (error) {
+        console.error("서버와의 연결 중 오류 발생:", error);
+    }
+});
+
+function endInterview() {
+    if(confirm("정말 종료하시겠습니까? AI 리포트를 확인할 수 없게 됩니다.")) {
+        window.location.href = "{% url 'main' %}";
+    }
+}
 
 function viewReport() {
     window.location.href = "{% url 'report' %}";

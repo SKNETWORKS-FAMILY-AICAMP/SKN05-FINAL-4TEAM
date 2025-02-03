@@ -9,6 +9,17 @@ class AudioFile(models.Model):
 
     def __str__(self):
         return f"AudioFile {self.id}"
+    
+# jobposting 
+class JobPosting(models.Model):
+    company_name = models.CharField(max_length=255)
+    job_title = models.CharField(max_length=255)
+    responsibilities = models.TextField(default="") # 담당 업무
+    qualifications = models.TextField(default="") # 지원 자격
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.company_name} - {self.job_title}"
 
 # Resume
 class Resume(models.Model):
@@ -21,11 +32,13 @@ class Resume(models.Model):
     teamwork_experience = models.TextField(default="")
     self_development = models.TextField(default="")
 
+    job_posting = models.ForeignKey(JobPosting, on_delete=models.SET_NULL,null=True, blank=True) # 지원공고 연결
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
-    
+
 
 # questions
 class Question(models.Model):
@@ -38,4 +51,4 @@ class Question(models.Model):
 
     def __str__(self):
         return f"User {self.user_id} | {self.category} | Order {self.order}"
-    
+

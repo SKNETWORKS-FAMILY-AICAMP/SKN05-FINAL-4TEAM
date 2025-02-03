@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    {% load static %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commit - 연습 모의 면접</title>
+    <link rel="stylesheet" href="{% static 'css/interview.css' %}">
+</head>
+<body>
+    <header class="header">
+        <div class="logo">COMMIT</div>
+        <nav class="nav">
+            <a href="#" onclick="return confirmExit();" id="homeButton" data-url="{% url 'main_page' %}">HOME</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h2>연습 모의 면접</h2>
+
+        <!-- 질문 섹션 -->
+        <div class="question-box" id="questionBox">
+            <!-- 질문 번호와 총 면접 시간을 한 줄에 배치 -->
+            <div class="question-header">
+                <h3 id="questionNumber">Q{{ current_index }}/{{ total_questions }}</h3>
+                <span class="total-time">총 면접 시간: <span id="totalTime">00:00</span></span>
+            </div>
+            <p id="questionText">{{ question }}</p>
+        </div>
+
+        <!-- 서버에서 전달받은 user_id와 question_id를 숨겨진 input에 저장 -->
+        <input type="hidden" id="questionId" value="{{ question_id }}">
+        <input type="hidden" id="userId" value="{{ user_id }}">
+        <input type="hidden" id="totalQuestions" value="{{ total_questions }}">
+
+        <!-- 면접관과 타이머 섹션 -->
+        <div class="interview-layout">
+            <!-- 좌측 면접관 -->
+            <div class="interviewer-section">
+                <img src="{% static 'images/interviewer1.png' %}" alt="면접관" class="interviewer-image">
+                <div class="interviewer-info">
+                    <span class="interviewer-name">AI 면접관</span>
+                </div>
+            </div>
+
+            <!-- 우측 타이머 -->
+            <div class="timer-container">
+                <div class="circular-timer">
+                    <svg class="timer-svg" viewBox="0 0 100 100">
+                        <circle class="timer-background" cx="50" cy="50" r="45"/>
+                        <circle class="timer-progress" cx="50" cy="50" r="45"/>
+                    </svg>
+                    <div class="timer-text">
+                        <span id="elapsedTimer">0</span>
+                        <span class="unit">초</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 녹음 버튼 -->
+        <div class="voice-controls" id="voiceControls">
+            <button type="button" id="startRecording">녹음 시작</button>
+            <button type="button" id="stopRecording" disabled>녹음 종료</button>
+        </div>
+
+        <div class="completion-box" id="completionBox">
+            <h3>모든 질문이 완료되었습니다.</h3>
+            <p>총 면접 시간: <span id="finalTotalTime">00분 00초</span></p>
+            <button type="button" onclick="viewReport()">AI 리포트 보러가기</button>
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2024 Commit. All rights reserved.
+    </footer>
+
+    <!-- 모달 HTML 수정 -->
+    <div class="modal-overlay" id="completionModal">
+        <div class="modal-content">
+            <h3>면접이 종료되었습니다</h3>
+            <p>총 면접 시간: <span id="modalTotalTime">00분 00초</span></p>
+            <div class="modal-buttons">
+                <button class="report-button" onclick="viewReport()">AI 리포트 확인하기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let totalSeconds = 0;
+
+        // 총 면접 시간 업데이트 함수
+        function updateTotalTime() {
+            totalSeconds++;
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            // 총 면접 시간을 "00:00" 형식으로 업데이트
+            const totalTimeElement = document.getElementById("totalTime");
+            totalTimeElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        // 1초마다 총 면접 시간을 업데이트
+        setInterval(updateTotalTime, 1000);
+    </script>
+
+    <script src="{% static 'js/interview_practice.js' %}"></script>
+</body>
+</html>

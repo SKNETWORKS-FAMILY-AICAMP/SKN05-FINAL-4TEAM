@@ -21,9 +21,8 @@ function selectJob(element) {
     if (!isResumeUploaded) {
         if (confirm('이력서 업로드가 필요합니다. 이력서 업로드 페이지로 이동하시겠습니까?')) {
             // 이력서 업로드 페이지로 이동
-            window.location.href = "{% url 'resume_form' %}";
-            // 또는 직접 경로 지정
-            // window.location.href = "/resume/upload/";
+            var resumeUrl = document.getElementById("resumeUploadLink").getAttribute("data-url");
+            window.location.href = resumeUrl;
         }
         return;
     }

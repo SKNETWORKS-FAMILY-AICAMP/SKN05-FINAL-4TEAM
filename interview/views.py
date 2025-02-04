@@ -11,13 +11,12 @@ from django.db import transaction
 import re
 
 
-# 메인 페이지 렌더링
+# 메인 페이지
 def main_page(request):
     """
     메인 페이지를 렌더링합니다.
     """
     return render(request, 'main.html')
-
 
 # 이력서 작성 페이지
 def resume_form(request):
@@ -32,6 +31,7 @@ def resume_form(request):
 
             # 성공 메시지 표시
             messages.success(request, "이력서 제출 및 질문 생성이 완료되었습니다! 메인 페이지에서 공고를 선택하세요")
+            # return redirect('practice_interview', user_id=resume.id)
             return redirect('main_page')
         else:
             messages.error(request,"폼 유효성 검사에 실패했습니다. 입력값을 확인해주세요.")
@@ -70,6 +70,67 @@ def get_resume_text(user_id):
     except Resume.DoesNotExist:
         return None
 
+
+# 생성 질문 파싱
+def parse_questions(questions_raw):
+    formatted_questions = []
+    if isinstance(questions_raw, list):
+        for item in questions_raw:
+            if isinstance(item, dict) and "유형" in item and "내용" in item:
+                content = item["내용"]
+                if isinstance(content, list):
+                    for question_text in content:
+                        formatted_questions.append({
+                            "category": item["유형"],
+                            "text": str(question_text).strip()
+                        })
+                else:
+                    formatted_questions.append({
+                        "category": item["유형"],
+                        "text": str(content).strip()
+                    })
+            else:
+                print(f"잘못된 질문 형식: {item}")
+
+    elif isinstance(questions_raw, dict):
+        for category, questions in questions_raw.items():
+            if isinstance(questions, list):
+                for question_text in questions:
+                    if isinstance(question_text, list):
+                        # 중첩 리스트가 있을 경우 각 항목 별도 저장
+                        for sub_question in question_text:
+                            formatted_questions.append({
+                                "category": category,
+                                "text": str(sub_question).strip()
+                            })
+                    else:
+                        formatted_questions.append({
+                            "category": category,
+                            "text": str(question_text).strip()
+                        })
+            else:
+                print(f"잘못된 질문 형식 for category '{category}': {questions}")
+    else:
+        return None, f"질문 데이터 형식이 올바르지 않습니다. (type: {type(questions_raw)})"
+    return formatted_questions, None
+
+
+# 질문 저장
+def save_questions(user_id, formatted_questions):
+    try:
+        with transaction.atomic():
+            for idx, question in enumerate(formatted_questions):
+                Question.objects.create(
+                    user_id=user_id,
+                    text=question["text"],
+                    category=question["category"],
+                    order=idx + 1
+                )
+    except Exception as e:
+        return None, f"질문 저장 실패: {str(e)}"
+    
+
+# 질문 생성
 def generate_questions_from_resume(user_id, jobposting_id):
     """
     특정 사용자의 이력서와 채용 공고 정보를 기반으로 질문 생성 및 저장
@@ -96,34 +157,25 @@ def generate_questions_from_resume(user_id, jobposting_id):
     except Exception as e:
         return None, f"질문 생성 실패: {str(e)}"
     
-    # 5. JSON 응답 확인 및 질문 추출
+    # JSON 응답 확인 및 질문 추출
     print("GPT 질문 응답 (JSON):", questions_json)
-    
-    if not questions_json or "questions" not in questions_json:
-        return None, "질문 생성 실패: 잘못된 JSON 응답"
+    questions_raw = questions_json["질문"]
 
-    # 질문 리스트 추출
-    questions_list = questions_json["questions"]  # JSON에서 질문 추출
-    if not questions_list or len(questions_list) == 0:
+    # 5. 질문 파싱
+    formatted_questions, error = parse_questions(questions_raw)
+    if error:
+        return None, error
+    if not formatted_questions:
         return None, "질문 생성 실패: 질문이 없습니다."
 
     # 6. 질문 저장
-    try:
-        with transaction.atomic():
-            for idx, question_text in enumerate(questions_list):
-                Question.objects.create(
-                    user_id=user_id,
-                    text=question_text.strip(),  # 공백 제거
-                    category=evaluation_metrics[idx % len(evaluation_metrics)],  # 카테고리 순환
-                    order=idx + 1
-                )
-    except Exception as e:
-        return None, f"질문 저장 실패: {str(e)}"
+    error = save_questions(user_id, formatted_questions)
+    if error:
+        return None, error
 
-    return questions_list, None
-
-
-
+    return formatted_questions, None
+    
+    
 # 질문 생성 API
 @csrf_exempt
 @api_view(['POST'])
@@ -145,34 +197,16 @@ def generate_questions(request):
     except ValueError:
         return Response({"error": "user_id와 jobposting_id는 정수여야 합니다."}, status=400)
     
-    questions, error = generate_questions_from_resume(user_id, jobposting_id)
-    if error:
-        return Response({"error": error}, status=500)
-    
-    return Response({"questions": questions}, status=200)
+    print(f"user_id: {user_id} / jobposting_id:{jobposting_id}")
 
 
-# 연습 면접 페이지
-def practice_interview_page(request, user_id):
-    """
-    연습 면접 페이지를 렌더링하고 질문을 표시
-    """
-    # 해당 사용자의 질문 가져오기
-    question = Question.objects.filter(user_id=user_id, is_used=False).order_by('order').first()
-
-    # 질문이 없는 경우 처리
-    if not question:
-        return render(request, 'interview_practice.html', {'error': '사용 가능한 질문이 없습니다.'})
-
-    total_questions = Question.objects.filter(user_id=user_id).count()
-
-    # 템플릿에 전달할 데이터
-    return render(request, 'interview_practice.html', {
-        'question': question.text, 
-        'question_id': question.id,
-        'user_id': user_id,
-        'total_questions': total_questions,
-    })
+    try:
+        questions, error = generate_questions_from_resume(user_id, jobposting_id)
+        if error:
+            return Response({"error": error}, status=500)
+        return Response({"questions": questions}, status=200)
+    except Exception as e:
+        return Response({"error": f"서버 내부 오류: {str(e)}"}, status=500)
 
 
 # 실전 면접 페이지

@@ -2,12 +2,13 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.http import JsonResponse
 from .forms import ResumeForm
-from .models import Resume, Question
+from .models import Resume, Question, JobPosting
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction 
+import re
 
 
 # 메인 페이지 렌더링
@@ -29,18 +30,11 @@ def resume_form(request):
             # 1. 이력서 저장
             resume = form.save()
 
-            # 2. 질문 생성 및 저장
-            questions, error = generate_questions_from_resume(resume.id)
-            if error:
-                messages.error(request, f"{error}")
-                return redirect('resume_form')
-
             # 성공 메시지 표시
-            messages.success(request, "이력서 제출 및 질문 생성이 성공적으로 완료되었습니다!")
-            return redirect('practice_interview', user_id=resume.id)
-
+            messages.success(request, "이력서 제출 및 질문 생성이 완료되었습니다! 메인 페이지에서 공고를 선택하세요")
+            return redirect('main_page')
         else:
-            messages.error(request, "폼 유효성 검사에 실패했습니다. 입력값을 확인해주세요.")
+            messages.error(request,"폼 유효성 검사에 실패했습니다. 입력값을 확인해주세요.")
 
     else:
         form = ResumeForm()
@@ -75,46 +69,59 @@ def get_resume_text(user_id):
         return resume_text
     except Resume.DoesNotExist:
         return None
-    
 
-# 질문 생성 
-def generate_questions_from_resume(user_id, evaluation_metrics=None):
+def generate_questions_from_resume(user_id, jobposting_id):
     """
-    특정 사용자의 이력서 데이터를 기반으로 질문 생성 및 저장
+    특정 사용자의 이력서와 채용 공고 정보를 기반으로 질문 생성 및 저장
     """
     # 1. 이력서 데이터 가져오기
     resume_text = get_resume_text(user_id)
     if not resume_text:
         return None, "해당 사용자의 이력서를 찾을 수 없습니다."
 
-    # 2. 질문 생성 호출
-    evaluation_metrics = ["질문 이해도", "논리적 전개", "내용의 구체성", "문제 해결 접근 방식"]
-    questions = generate_q(resume_text, evaluation_metrics)
-    
-    # GPT 응답 확인
-    print("GPT 질문 응답:", questions) 
-    
-    if not questions or "Error" in questions:
-        return None, f"질문 생성 실패: {questions}"
-
+    # 2. 사용자가 선택한 채용 공고 데이터 가져오기
     try:
-        questions_list = [
-            q.strip() for q in questions
-            if q.strip() and not q.startswith("- ")  # 제목("- ")으로 시작하는 줄 제외
-        ]
+        job_posting = JobPosting.objects.get(id=jobposting_id)
+        responsibilities = job_posting.responsibilities
+        qualifications = job_posting.qualifications
+    except JobPosting.DoesNotExist:
+        return None, "해당 기업 공고를 찾을 수 없습니다."
+    
+    # 3. 평가 기준 설정
+    evaluation_metrics = ["질문 이해도", "논리적 전개", "내용의 구체성", "문제 해결 접근 방식", "핵심 기술 및 직무 수행 능력 평가"]
+    
+    # 4. 질문 생성
+    try:
+        questions_json = generate_q(resume_text, responsibilities, qualifications, evaluation_metrics)
+    except Exception as e:
+        return None, f"질문 생성 실패: {str(e)}"
+    
+    # 5. JSON 응답 확인 및 질문 추출
+    print("GPT 질문 응답 (JSON):", questions_json)
+    
+    if not questions_json or "questions" not in questions_json:
+        return None, "질문 생성 실패: 잘못된 JSON 응답"
+
+    # 질문 리스트 추출
+    questions_list = questions_json["questions"]  # JSON에서 질문 추출
+    if not questions_list or len(questions_list) == 0:
+        return None, "질문 생성 실패: 질문이 없습니다."
+
+    # 6. 질문 저장
+    try:
         with transaction.atomic():
             for idx, question_text in enumerate(questions_list):
                 Question.objects.create(
                     user_id=user_id,
-                    text=question_text,
+                    text=question_text.strip(),  # 공백 제거
                     category=evaluation_metrics[idx % len(evaluation_metrics)],  # 카테고리 순환
                     order=idx + 1
                 )
     except Exception as e:
         return None, f"질문 저장 실패: {str(e)}"
 
-    # return questions, None
     return questions_list, None
+
 
 
 # 질문 생성 API
@@ -127,16 +134,18 @@ def generate_questions(request):
     print("요청 데이터:", request.data) 
     
     user_id = request.data.get('user_id')
+    jobposting_id = request.data.get('jobposting_id')
     
-    if not user_id:
-        return Response({"error": "user_id는 필수입니다."}, status=400)
+    if not user_id or not jobposting_id:
+        return Response({"error": "user_id와 jobposting_id는 필수입니다."}, status=400)
     
     try:
         user_id = int(user_id) 
+        jobposting_id = int(jobposting_id)
     except ValueError:
-        return Response({"error": "user_id는 정수여야 합니다."}, status=400)
+        return Response({"error": "user_id와 jobposting_id는 정수여야 합니다."}, status=400)
     
-    questions, error = generate_questions_from_resume(user_id)
+    questions, error = generate_questions_from_resume(user_id, jobposting_id)
     if error:
         return Response({"error": error}, status=500)
     
@@ -209,8 +218,6 @@ def next_question(request, user_id):
         if not next_question:
             return JsonResponse({'error': '모든 질문이 완료되었습니다.'})
 
-        # 디버깅용 로그 추가
-        # print(f"다음 질문: {next_question.text}, ID: {next_question.id}")
         return JsonResponse({'question': next_question.text, 'question_id': next_question.id})
 
     return JsonResponse({'error': '잘못된 요청 방식입니다.'}, status=400)

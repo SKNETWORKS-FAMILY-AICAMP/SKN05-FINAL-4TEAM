@@ -16,23 +16,19 @@ const questionIdInput = document.getElementById("questionId");  // 현재 질문
 const userIdInput = document.getElementById("userId");            // user_id
 const totalQuestionsInput = document.getElementById("totalQuestions");  // 총 질문 수
 
+
 function updateTimerDisplay() {
-    document.getElementById("elapsedTimer").textContent = currentRecordingTime;
-    
-    // 원형 프로그레스 바 업데이트 (3분 = 180초를 최대로 설정)
+    timerElement.textContent = timeLeft;
+
+    // 원형 프로그레스 바 업데이트
     const circle = document.querySelector('.timer-progress');
-    const circumference = 2 * Math.PI * 45;
-    
-    if (currentRecordingTime === 0) {  // 타이머가 리셋되었을 때
-        circle.style.strokeDasharray = `${circumference} ${circumference}`;
-        circle.style.strokeDashoffset = circumference;  // 완전히 비워진 상태로 시작
-    } else {  // 타이머가 진행 중일 때
-        const maxTime = 180; // 3분을 최대로 설정
-        const progress = Math.min(currentRecordingTime / maxTime, 1);
-        const offset = circumference - (progress * circumference);
+    if(circle) {
+        const circumference = 2 * Math.PI * 45;
+        const offset = circumference - (timeLeft / 90) * circumference;
         circle.style.strokeDasharray = `${circumference} ${circumference}`;
         circle.style.strokeDashoffset = offset;
     }
+    
 }
 
 function updateTotalTimerDisplay() {
@@ -50,9 +46,15 @@ function startQuestionTimer() {
         if (timeLeft > 0) {
             timeLeft--;
             updateTimerDisplay();
-        } else {
-            clearInterval(questionTimerInterval);
-            stopRecording();
+            if (timeLeft === 0) {  // 시간이 0이 되면
+                clearInterval(questionTimerInterval);
+                if (isRecording) {  // 녹음 중이었다면
+                    stopRecording();
+                } else{
+                    nextQuestion();  // 타이머가 0이면 자동으로 다음 질문으로 이동
+                }
+                
+            }
         }
     }, 1000);
 }
@@ -115,15 +117,16 @@ function completeInterview() {
     clearInterval(questionTimerInterval);
     clearInterval(totalTimerInterval);
 
-    // 면접 UI 숨기기
-    document.querySelector(".interview-layout").style.display = "none";
-    document.getElementById("voiceControls").style.display = "none";
+    // 인터뷰 관련 UI 숨기기
+    const interviewLayout = document.querySelector(".interview-layout");
+    const voiceControls = document.getElementById("voiceControls");
+    if(interviewLayout) interviewLayout.style.display = "none";
+    if(voiceControls) voiceControls.style.display = "none";
 
-    // 모달 표시
+    // 모달에 총 면접 시간 업데이트
     const totalMinutes = Math.floor(totalTimeElapsed / 60);
     const totalSeconds = totalTimeElapsed % 60;
-    document.getElementById("modalTotalTime").textContent = 
-        `${totalMinutes}분 ${totalSeconds}초`;
+    document.getElementById("modalTotalTime").textContent = `${totalMinutes}분 ${totalSeconds}초`;
     document.getElementById("completionModal").style.display = "block";
 }
 
@@ -156,10 +159,13 @@ stopButton.addEventListener("click", () => {
 
 document.addEventListener("DOMContentLoaded", async () => {
     const userId = userIdInput.value;
+    console.log("userId:",userId);
 
     try {
         const response = await fetch(`/get_questions/${userId}/`);
+        console.log("Response status:", response.status);
         const data = await response.json();
+        console.log("Response data:", data);
         if (data.questions) {
             questions = data.questions;
             updateQuestionNumber();
@@ -209,3 +215,4 @@ document.querySelector('.nav a').onclick = function(e) {
     e.preventDefault();
     confirmExit();
 };
+

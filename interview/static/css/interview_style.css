@@ -1,0 +1,421 @@
+/* 전체 레이아웃 */
+body {
+    margin: 0;
+    font-family: 'Noto Sans', sans-serif;
+    background: #f9fafc; /* 은은한 배경색 */
+    color: #333333;
+    line-height: 1.6;
+    }
+
+    /* 헤더 스타일 */
+    .header {
+    background: #ffffff;
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #ddd;
+    }
+
+    .header .logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #003366;
+    letter-spacing: 2px;
+    }
+
+    .header .nav a {
+    font-size: 16px;
+    margin-left: 20px;
+    text-decoration: none;
+    color: #003366;
+    transition: color 0.3s;
+    }
+
+    .header .nav a:hover {
+    color: #00509e;
+    }
+    
+    .container {
+        max-width: 1200px;
+        margin: 15px auto;
+        padding: 25px;
+        background-color: #ffffff;
+        border-radius: 20px;
+        color: #333333;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    .container h2 {
+        text-align: center;
+        margin-bottom: 10px;
+        font-size: 22px;
+        color: #2b2b2b;
+    }
+    .timer {
+        text-align: center;
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        border: 2px solid #e9ecef;
+    }
+    .timer span {
+        font-size: 28px;
+        font-weight: bold;
+        color: #003366;
+    }
+
+    /* 질문 박스 */
+    .question-box {
+        margin: 0 0 20px 0;
+        padding: 15px 20px;
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    /* 질문 번호와 총 면접 시간을 한 줄에 배치 */
+    .question-header {
+        display: flex;
+        justify-content: space-between; /* 양쪽 정렬 */
+        align-items: center; /* 수직 정렬 */
+        margin-bottom: 15px; /* 아래 여백 */
+        border-bottom: 2px solid #003366; /* 아래 테두리 */
+        padding-bottom: 10px; /* 아래 여백 추가 */
+    }
+    .question-header h3 {
+        font-size: 24px;
+        color: #003366;
+        margin: 0; /* 기본 여백 제거 */
+    }
+    .question-header .total-time {
+        font-size: 18px;
+        color: #003366;
+    }
+    .question-box p {
+        font-size: 20px;
+        color: #2b2b2b;
+        line-height: 1.8;
+    }
+
+    /* 버튼 스타일 */
+    .voice-response {
+        text-align: center;
+        margin: 40px 0;
+    }
+    .voice-response button {
+        background-color: #003366;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 18px;
+        border-radius: 8px;
+        cursor: pointer;
+        margin: 0 10px;
+        transition: all 0.3s ease;
+    }
+    .voice-response button:hover {
+        background-color: #004c99;
+        transform: translateY(-2px);
+    }
+    .voice-response button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+    .status-indicator {
+        text-align: center;
+        margin: 20px 0;
+        font-size: 16px;
+        color: #666;
+    }
+    .recording-indicator {
+        display: none;
+        color: #dc3545;
+        font-weight: bold;
+        animation: blink 1s infinite;
+    }
+    @keyframes blink {
+        50% { opacity: 0.5; }
+    }
+    .progress-bar {
+        width: 100%;
+        height: 6px;
+        background-color: #e9ecef;
+        border-radius: 3px;
+        margin: 20px 0;
+        overflow: hidden;
+    }
+    .progress {
+        width: 0%;
+        height: 100%;
+        background-color: #003366;
+        transition: width 0.3s ease;
+    }
+    .completion-box {
+        text-align: center;
+        padding: 30px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+        display: none;
+    }
+    .completion-box button {
+        background-color: #003366;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 16px;
+        border-radius: 5px;
+        margin: 10px;
+        cursor: pointer;
+    }
+    footer {
+        text-align: center;
+        padding: 20px;
+        background-color: #003366;
+        color: white;
+        margin-top: 30px;
+    }
+    /* 상단 상태 섹션 스타일 */
+    .status-section {
+        margin-bottom: 30px;
+    }
+
+    .total-timer {
+        text-align: right;
+        font-size: 18px;
+        color: #003366;
+        margin-top: 10px;
+    }
+
+    /* 면접관 섹션 스타일 */
+    .interview-layout {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        margin: 5px 0 30px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 15px;
+        gap: 50px;
+    }
+
+    .interviewer-section {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        margin-top: 10px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+    }
+
+    .interviewer-image {
+        width: 250px;  
+        height: 250px;  
+        border-radius: 10px;
+        object-fit: cover;
+        margin-bottom: 15px;
+        border: 3px solid #003366;
+    }
+
+    .interviewer-info {
+        text-align: center;
+        font-size: 1rem;
+        font-weight: bold;
+        color: #333;
+        margin-top: 5px;
+    }
+
+    .interviewer-name {
+        font-size: 16px;
+        font-weight: bold;
+        color: #003366;
+    }
+
+    /* 질문 섹션 레이아웃 조정 */
+    .question-section {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 30px;
+        align-items: start;
+    }
+
+    .timer-container {
+        justify-self: center;
+    }
+
+    /* 원형 타이머 크기 조정 */
+    .circular-timer {
+        width: 180px;  /* 150px에서 180px로 증가 */
+        height: 180px;
+    }
+
+    .total-time {
+        text-align: right;
+        font-size: 18px;
+        color: #003366;
+        margin-bottom: 5px;
+    }
+
+
+    .question-box {
+        margin-bottom: 30px;
+        padding: 30px;
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .question-box h3 {
+        font-size: 20px;
+        color: #003366;  /* 색상 변경 */
+        margin-bottom: 20px;
+    }
+
+    .question-box p {
+        font-size: 24px;
+        line-height: 1.6;
+        color: #333333;  /* 색상 변경 */
+    }
+
+    .circular-timer {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+    }
+
+    .timer-svg {
+        transform: rotate(-90deg);
+        width: 100%;
+        height: 100%;
+    }
+
+    .timer-background {
+        fill: none;
+        stroke: #e9ecef;  /* 색상 변경 */
+        stroke-width: 8;
+    }
+
+    .timer-progress {
+        fill: none;
+        stroke: #003366;  /* 색상 변경 */
+        stroke-width: 8;
+        stroke-linecap: round;
+        stroke-dasharray: 283;
+        stroke-dashoffset: 0;
+        transition: stroke-dashoffset 1s linear;
+    }
+
+    .timer-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #003366;  /* 색상 변경 */
+    }
+
+    .timer-text span {
+        font-size: 36px;
+        font-weight: bold;
+    }
+
+    .timer-text .unit {
+        font-size: 18px;
+    }
+
+    .voice-controls {
+        margin-top: 30px;
+        text-align: center;
+    }
+
+    .voice-controls button {
+        background: #003366;  /* 배경색 변경 */
+        color: white;
+        border: none;  /* 테두리 제거 */
+        padding: 15px 40px;
+        font-size: 18px;
+        border-radius: 30px;
+        cursor: pointer;
+        margin: 0 10px;
+        transition: all 0.3s ease;
+    }
+
+    .voice-controls button:hover:not(:disabled) {
+        background: #004c99;  /* 호버 색상 변경 */
+        transform: translateY(-2px);
+    }
+
+    .voice-controls button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* 모달 스타일 추가 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+    }
+
+    .modal-content {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        width: 90%;
+        max-width: 500px;
+        z-index: 1001;
+    }
+
+    .modal-content h3 {
+        color: #003366;
+        margin-bottom: 20px;
+    }
+
+    .modal-content p {
+        color: #666;
+        margin-bottom: 25px;
+    }
+
+    .modal-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+    }
+
+    .modal-buttons button {
+        padding: 12px 25px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+
+    .end-button {
+        background: #dc3545;
+        color: white;
+    }
+
+    .report-button {
+        background: #003366;
+        color: white;
+    }
+
+    .modal-buttons button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }

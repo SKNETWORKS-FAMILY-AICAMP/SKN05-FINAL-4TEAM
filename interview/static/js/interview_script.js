@@ -159,10 +159,13 @@ stopButton.addEventListener("click", () => {
 
 document.addEventListener("DOMContentLoaded", async () => {
     const userId = userIdInput.value;
+    console.log("userId:",userId);
 
     try {
         const response = await fetch(`/get_questions/${userId}/`);
+        console.log("Response status:", response.status);
         const data = await response.json();
+        console.log("Response data:", data);
         if (data.questions) {
             questions = data.questions;
             updateQuestionNumber();

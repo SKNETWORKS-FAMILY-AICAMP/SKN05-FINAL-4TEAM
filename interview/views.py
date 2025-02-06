@@ -6,9 +6,7 @@ from .models import Resume, Question, JobPosting
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q
-from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction 
-import re
 
 
 # 메인 페이지
@@ -17,6 +15,7 @@ def main_page(request):
     메인 페이지를 렌더링합니다.
     """
     return render(request, 'main.html')
+
 
 # 이력서 작성 페이지
 def resume_form(request):
@@ -31,7 +30,6 @@ def resume_form(request):
 
             # 성공 메시지 표시
             messages.success(request, "이력서 제출 및 질문 생성이 완료되었습니다! 메인 페이지에서 공고를 선택하세요")
-            # return redirect('practice_interview', user_id=resume.id)
             return redirect('main_page')
         else:
             messages.error(request,"폼 유효성 검사에 실패했습니다. 입력값을 확인해주세요.")
@@ -177,7 +175,6 @@ def generate_questions_from_resume(user_id, jobposting_id):
     
     
 # 질문 생성 API
-@csrf_exempt
 @api_view(['POST'])
 def generate_questions(request):
     """
@@ -185,6 +182,7 @@ def generate_questions(request):
     """
     print("요청 데이터:", request.data) 
     
+    # body = json.loads(request.body.decode('utf-8'))
     user_id = request.data.get('user_id')
     jobposting_id = request.data.get('jobposting_id')
     
@@ -220,7 +218,7 @@ def interview_page(request, user_id):
         return render(request, 'interview.html', {'error': '사용 가능한 질문이 없습니다.'})
 
     total_questions = Question.objects.filter(user_id=user_id).count()
-    
+
     return render(request, 'interview.html', {
         'question': question.text, 
         'question_id': question.id,
@@ -228,9 +226,7 @@ def interview_page(request, user_id):
         'total_questions': total_questions,
     })
 
-
-# 다음 질문 API(실전 면접)
-@csrf_exempt
+# 다음 질문 API
 def next_question(request, user_id):
     """
     녹음 종료 후 다음 질문을 가져오는 API
@@ -241,7 +237,7 @@ def next_question(request, user_id):
         # 현재 질문을 사용된 상태로 업데이트
         if current_question_id:
             try:
-                current_question = Question.objects.get(id=current_question_id)
+                current_question = Question.objects.get(id=current_question_id, user_id=user_id)
                 current_question.is_used = True
                 current_question.save()
             except Question.DoesNotExist:
@@ -250,8 +246,53 @@ def next_question(request, user_id):
     # 다음 질문 가져오기
         next_question = Question.objects.filter(user_id=user_id, is_used=False).order_by('order').first()
         if not next_question:
-            return JsonResponse({'error': '모든 질문이 완료되었습니다.'})
+            return JsonResponse({'error': '모든 질문이 완료되었습니다.'}, status=200)
 
-        return JsonResponse({'question': next_question.text, 'question_id': next_question.id})
+        return JsonResponse({'question': next_question.text, 'question_id': next_question.id}, status=200)
 
     return JsonResponse({'error': '잘못된 요청 방식입니다.'}, status=400)
+
+
+# 이력서 존재 확인하는 API
+@api_view(['GET'])
+def check_resume(request):
+    """
+    사용자의 이력서가 존재하는지 확인하는 API
+    """
+    user_id = request.GET.get('user_id')
+
+    if not user_id:
+        return Response({"error": "user_id가 필요합니다."}, status=400)
+    
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        return Response({"error": "user_id는 정수여야 합니다."}, status=400)
+    
+    resume_exists = Resume.objects.filter(id=user_id).exists()
+    return Response({"resume_exists": resume_exists}, status=200)
+
+# 면접 질문 존재 확인하는 API
+@api_view(["GET"])
+def check_questions(request):
+    """
+    사용자의 면접 질문이 존재하는지 확인하는 API
+    """
+    user_id = request.GET.get('user_id')  # GET 요청에서 user_id 받음
+
+    if not user_id:
+        return Response({"error": "user_id가 필요합니다."}, status=400)
+
+    try:
+        user_id = int(user_id)
+    except ValueError:
+        return Response({"error": "user_id는 정수여야 합니다."}, status=400)
+
+    questions = Question.objects.filter(user_id=user_id).order_by('order')
+
+    if questions.exists():
+        question_list = [{"id": q.id, "text": q.text, "order": q.order} for q in questions]
+    else:
+        question_list = []
+
+    return Response({"questions": question_list}, status=200)

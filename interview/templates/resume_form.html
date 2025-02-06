@@ -3,6 +3,7 @@
 <head>
     {% load static %}
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Commit - 이력서 작성</title>
     <link rel="stylesheet" href="{% static 'css/resume_form_style.css' %}">
@@ -82,5 +83,7 @@
     </div>
 
     <script src="{% static 'js/resume_form_script.js' %}"></script>
+    <!-- CSRF 토큰을 숨김 필드로 저장 -->
+    <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
 </body>
 </html>

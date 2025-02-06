@@ -24,7 +24,7 @@ def audio_to_text(audio_path):
         print(f"에러 메시지: {e}")
 
 
-
+# 질문 생성
 def generate_q(resume_text, responsibilities, qualifications, evaluation_metrics):
     openai.api_key = settings.OPENAI_API_KEY
     prompt = f"""
@@ -50,13 +50,14 @@ def generate_q(resume_text, responsibilities, qualifications, evaluation_metrics
     4. 자기 개발 노력 관련 질문: 자기 개발 능력과 학습 의지를 평가하기 위한 질문
     5. 지원 자격과 관련된 질문: 예를 들어, 코드 리뷰, 테스트 코드 작성, RDB 모델링 최적화 등 지원 자격에 명시된 항목과 관련된 질문
 
-    각 질문 유형별로 2개의 구체적인 질문을 작성하세요.
+    각 질문 유형별로 **2개의 구체적인 질문을 작성하세요.
     특히 지원 자격과 관련된 항목(예: 코드 리뷰, 테스트 코드 작성, 대규모 트래픽 처리)에 대한 질문을 포함해주세요.
     결과를 JSON 형식으로 반환하세요.
     """
 
     response = openai.chat.completions.create(
         model="gpt-3.5-turbo",
+        # model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7
         )

@@ -1,8 +1,9 @@
-{% load static %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+  {% load static %}
   <meta charset="UTF-8">
+  <meta name="csrf-token" content="{{ csrf_token }}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI 모의면접 시스템</title>
   <link rel="stylesheet" href="{% static 'css/main_style.css' %}">
@@ -148,7 +149,7 @@
           <div class="job-section">
             <h3>지원할 공고 선택</h3>
             <div class="job-list">
-              <div class="job-posting" onclick="selectJob(this)" data-job-id="1">
+              <div class="job-posting" data-job-id="1">
                 <div class="job-header">
                   <h4>백엔드 개발자</h4>
                   <span class="company">주식회사 크리스비</span>
@@ -162,7 +163,7 @@
                 </div>
               </div>
               
-              <div class="job-posting" onclick="selectJob(this)" data-job-id="2">
+              <div class="job-posting" data-job-id="2">
                 <div class="job-header">
                   <h4>프론트엔드 개발자</h4>
                   <span class="company">(주)캐럿글로벌</span>
@@ -176,7 +177,7 @@
                 </div>
               </div>
               
-              <div class="job-posting" onclick="selectJob(this)" data-job-id="3">
+              <div class="job-posting" data-job-id="3">
                 <div class="job-header">
                   <h4>인공지능(AI) 엔지니어</h4>
                   <span class="company">(주)헥토</span>
@@ -204,7 +205,7 @@
                 </div>
                 <div class="detail-item">
                   <i class="fas fa-list-ol"></i>
-                  <span>총 8개의 맞춤형 질문</span>
+                  <span>총 10개의 맞춤형 질문</span>
                 </div>
                 <div class="detail-item">
                   <i class="fas fa-microphone"></i>
@@ -217,7 +218,6 @@
               </div>
               <button 
                 type="button" 
-                onclick="startReal()" 
                 id="realBtn" 
                 disabled
                 data-url="{% url 'interview' user_id=1 %}"
@@ -242,7 +242,10 @@
           <div class="loading-spinner"></div>
       </div>
   </div>
+
   <script src="{% static 'js/main_script.js' %}"></script>
   <a id="resumeUploadLink" data-url="{% url 'resume_form' %}" style="display: none;"></a>
+  <!-- CSRF 토큰을 숨김 필드로 저장 -->
+  <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
 </body>
 </html>

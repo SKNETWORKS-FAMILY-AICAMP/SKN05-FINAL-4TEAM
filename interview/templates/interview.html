@@ -3,9 +3,11 @@
 <head>
     {% load static %}
     <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Commit - 실전 모의 면접</title>
     <link rel="stylesheet" href="{% static 'css/interview_style.css' %}">
+    <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
 </head>
 <body>
     <header class="header">
@@ -22,8 +24,9 @@
         <div class="question-box" id="questionBox">
             <!-- 질문 번호와 총 면접 시간을 한 줄에 배치 -->
             <div class="question-header">
-                <h3 id="questionNumber">Q{{ current_index }}/{{ total_questions }}</h3>
-                <span class="total-time">총 면접 시간: <span id="totalTime">00:00</span></span>
+                <!-- <h3 id="questionNumber">Q{{ current_index }}/{{ total_questions }}</h3> -->
+                <h3 id="questionNumber">Q1/{{ total_questions }}</h3>
+                <span class="total-time">총 면접 시간: <span id="totalTime">00:00</span>
             </div>
             <p id="questionText">{{ question }}</p>
         </div>
@@ -60,8 +63,8 @@
 
         <!-- 녹음 버튼 -->
         <div class="voice-controls" id="voiceControls">
-            <button type="button" id="startRecording">녹음 시작</button>
-            <button type="button" id="stopRecording" disabled>녹음 종료</button>
+            <button type="button" id="startButton">녹음 시작</button>
+            <button type="button" id="stopButton" disabled>녹음 종료</button>
         </div>
 
         <div class="completion-box" id="completionBox">
@@ -86,6 +89,10 @@
         </div>
     </div>
 
+    <!-- 숨겨진 입력필드 추가 -->
+    <input type="hidden" id="userIdInput" value="{{ user_id }}">
+    <input type="hidden" id="questionIdInput" value="{{ question_id }}">
+    
     <script>
         let totalSeconds = 0;
 
@@ -105,5 +112,7 @@
     </script>
     
     <script src="{% static 'js/interview_script.js' %}"></script>
+    <!-- CSRF 토큰을 숨김 필드로 저장 -->
+    <input type="hidden" id="csrf_token" value="{{ csrf_token }}">
 </body>
 </html>

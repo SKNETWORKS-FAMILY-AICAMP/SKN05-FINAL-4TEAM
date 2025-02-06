@@ -60,6 +60,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
+CSRF_COOKIE_NAME = "csrftoken"
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+]
+
+
 ROOT_URLCONF = 'ai_interview.urls'
 
 TEMPLATES = [
@@ -155,6 +163,13 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-#RunPod 설정
+# RunPod 설정
 RUNPOD_API_KEY = config("RUNPOD_API_KEY", default="")
 STT_ENDPOINT = config("STT_endpoint", default="")
+
+# rest framework를 json으로 설정
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
+}

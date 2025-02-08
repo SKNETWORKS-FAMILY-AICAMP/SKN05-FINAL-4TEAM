@@ -3,6 +3,8 @@ from django.contrib import messages
 from django.http import JsonResponse
 from .forms import ResumeForm
 from .models import Resume, Question, JobPosting
+import utils
+from .utils import audio_to_text, generate_presigned_url, get_public_url
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q
@@ -255,3 +257,25 @@ def next_question(request, user_id):
         return JsonResponse({'question': next_question.text, 'question_id': next_question.id})
 
     return JsonResponse({'error': '잘못된 요청 방식입니다.'}, status=400)
+
+
+### 좀 더 보기
+def get_presigned_url(request):
+    """Presigned URL 제공 API"""
+    file_name = request.GET.get("fileName")
+    if not file_name:
+        return JsonResponse({"error": "fileName parameter is required"}, status=400)
+
+    url = generate_presigned_url(file_name)
+    return JsonResponse({"url": url})
+
+def process_audio(request):
+    """Whisper 모델 실행 및 평가 API"""
+    file_name = request.GET.get("fileName")
+    if not file_name:
+        return JsonResponse({"error": "fileName parameter is required"}, status=400)
+
+    file_url = get_public_url(file_name)  # S3 퍼블릭 URL 가져오기
+    result = audio_to_text(file_url)  # Whisper 모델 실행
+    return JsonResponse(result)
+

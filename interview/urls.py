@@ -1,6 +1,5 @@
 from django.urls import path
 from . import views
-from .views import generate_questions,interview_page, next_question, check_resume, check_questions, interview_report
 
 urlpatterns = [
     path('', views.main_page, name='main_page'),

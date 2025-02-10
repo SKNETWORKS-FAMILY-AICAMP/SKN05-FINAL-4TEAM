@@ -15,6 +15,9 @@ from decouple import config
 import os
 from dotenv import load_dotenv 
 
+
+load_dotenv()
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -35,7 +38,6 @@ AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
 
 # openAI API 키 설정
-load_dotenv()
 OPENAI_API_KEY = config('OPENAI_API_KEY')
 
 # Application definition

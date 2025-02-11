@@ -24,7 +24,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let totalTimerInterval;
 
     let mediaRecorder;
-    let audioChunks = [];
     let audioStream;
     let audioBlob;
     let audioUrl;
@@ -106,27 +105,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function startRecording() {
-        audioChunks = [];
-        const currentQuestionId = questionIdInput.value;
-
         try {
+            audioChunks = [];
+            currentQuestionId = questionIdInput.value;
+    
+            // 마이크 권한 확인 후 요청
             if (!hasMediaPermission) {
                 await requestMediaPermission();
             }
-
+    
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
-
-            mediaRecorder.addEventListener("dataavailable", event => {
-                audioChunks.push(event.data);
-            });
-
-            mediaRecorder.addEventListener("stop", () => {
-                const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
-                uploadToS3(audioBlob, currentQuestionId);
-            });
-
-            mediaRecorder.start();
+    
+            // 🔹 1초마다 녹음 데이터(청크)를 서버에 전송
+            mediaRecorder.ondataavailable = async (event) => {
+                if (event.data.size > 0) {
+                    await sendChunkToServer(event.data, currentQuestionId);
+                }
+            };
+    
+            // 🔹 녹음이 종료될 때 마지막 청크 강제 전송 + S3 업로드 요청
+            mediaRecorder.onstop = async () => {
+                await finalizeAudio(currentQuestionId);
+            };
+    
+            // 🔹 1초마다 데이터 청크 생성 후 서버 전송
+            mediaRecorder.start(1000);
+    
+            // 버튼 상태 변경
             startButton.disabled = true;
             stopButton.disabled = false;
             isRecording = true;
@@ -136,38 +142,57 @@ document.addEventListener("DOMContentLoaded", () => {
             hasMediaPermission = false;
         }
     }
-
-    function stopRecording() {
-        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    
+    // 🔥 녹음 종료
+    async function stopRecording() {
+        if (mediaRecorder && isRecording) {
             mediaRecorder.stop();
+            isRecording = false;
+    
+            // 마이크 스트림 정리
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+    
+            // 버튼 상태 변경
+            startButton.disabled = false;
+            stopButton.disabled = true;
         }
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-        }
-        startButton.disabled = false;
-        stopButton.disabled = true;
-        isRecording = false;
-        nextQuestion();
     }
-
-    // 나중에 확인 (위험한 방법)
-    async function uploadToS3(audioBlob, questionId) {
+    
+    // 🔥 작은 청크 단위로 서버에 전송
+    async function sendChunkToServer(chunk, questionId) {
+        let formData = new FormData();
+        formData.append("chunk", chunk);
+        formData.append("questionId", questionId);
+    
         try {
-            const formData = new FormData();
-            formData.append("audio", audioBlob, `question_${questionId}_recording.wav`);
-            formData.append("questionId", questionId);
-
-            const response = await fetch("/api/upload-recording", {
+            await fetch("/upload_chunk/", {
                 method: "POST",
-                body: formData,
+                body: formData
             });
-
+        } catch (error) {
+            console.error("청크 업로드 실패:", error);
+        }
+    }
+    
+    // 🔥 서버에서 모든 청크를 합쳐 S3로 업로드 요청
+    async function finalizeAudio(questionId) {
+        try {
+            const response = await fetch("/finalize_audio/", {
+                method: "POST",
+                body: JSON.stringify({ questionId }),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+    
             if (!response.ok) {
-                throw new Error("Upload failed");
+                throw new Error("S3 업로드 실패");
             }
         } catch (error) {
-            console.error("Error uploading recording:", error);
-            alert("음성 파일 업로드에 실패했습니다.");
+            console.error("최종 업로드 실패:", error);
+            alert("음성 파일을 S3에 업로드하는 중 오류가 발생했습니다.");
         }
     }
 
@@ -175,8 +200,10 @@ document.addEventListener("DOMContentLoaded", () => {
         await startRecording();
         startQuestionTimer();
     });
-
-    stopButton.addEventListener("click", stopRecording);
+    
+    stopButton.addEventListener("click", async () => {
+        await stopRecording();
+    });
 
     async function generateReport() {
         reportBtn.style.display = "none";

@@ -10,4 +10,6 @@ urlpatterns = [
     path('api/check_resume/', views.check_resume, name='check_resume'),
     path('api/check_questions/', views.check_questions, name='check_questions'),
     path('report/<int:user_id>/', views.interview_report, name='interview_report'),
+    path('upload_chunk/', views.upload_chunk, name='upload_chunk'),
+    path('finalize_audio/', views.finalize_audio, name='finalize_audio'),
 ]

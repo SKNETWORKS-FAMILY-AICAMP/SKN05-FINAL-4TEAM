@@ -270,3 +270,30 @@ def generate_q(resume_text, responsibilities, qualifications, evaluation_metrics
       
     except json.JSONDecodeError:
         prompt += "\n\n JSON 형식으로 다시 반환해주세요."
+
+
+
+
+AWS_STORAGE_BUCKET_NAME = settings.AWS_STORAGE_BUCKET_NAME
+region = "ap-northeast-2"
+
+s3_client = boto3.client(
+    "s3",
+    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+    region_name=region
+)
+
+def upload_to_s3(file_path, s3_key):
+    """
+    로컬 파일을 AWS S3에 업로드하는 함수
+    :param file_path: 로컬 파일 경로
+    :param s3_key: S3 버킷 내 저장될 파일 경로 (예: 'audio/recording.wav')
+    :return: S3 URL (업로드된 파일의 URL)
+    """
+    try:
+        s3_client.upload_file(file_path, AWS_STORAGE_BUCKET_NAME, s3_key)
+        return f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{region}.amazonaws.com/{s3_key}"
+    except Exception as e:
+        print(f"S3 업로드 실패: {e}")
+        return None

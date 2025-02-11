@@ -4,13 +4,16 @@ from django.http import JsonResponse
 from .forms import ResumeForm
 from .models import Resume, Question, JobPosting
 import utils
-from .utils import audio_to_text, generate_presigned_url, get_public_url
+from .utils import audio_to_text, generate_presigned_url, get_public_url, upload_to_s3
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q
 from django.views.decorators.csrf import csrf_exempt
-from django.db import transaction 
+from django.db import transaction
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 import re
+import os
 
 
 # 메인 페이지
@@ -341,23 +344,57 @@ def get_report_data(request, user_id):
     return JsonResponse(response_data)
 
 
-### 좀 더 보기
-def get_presigned_url(request):
-    """Presigned URL 제공 API"""
-    file_name = request.GET.get("fileName")
-    if not file_name:
-        return JsonResponse({"error": "fileName parameter is required"}, status=400)
 
-    url = generate_presigned_url(file_name)
-    return JsonResponse({"url": url})
+# 청크 저장 폴더
+TEMP_CHUNKS_DIR = "temp_chunks/"
 
-def process_audio(request):
-    """Whisper 모델 실행 및 평가 API"""
-    file_name = request.GET.get("fileName")
-    if not file_name:
-        return JsonResponse({"error": "fileName parameter is required"}, status=400)
+# 폴더가 없으면 생성
+os.makedirs(TEMP_CHUNKS_DIR, exist_ok=True)
 
-    file_url = get_public_url(file_name)  # S3 퍼블릭 URL 가져오기
-    result = audio_to_text(file_url)  # Whisper 모델 실행
-    return JsonResponse(result)
+@csrf_exempt
+def upload_chunk(request):
+    """ 청크 단위로 오디오 데이터를 서버에 저장하는 뷰 """
+    if request.method == "POST" and request.FILES.get("chunk"):
+        chunk = request.FILES["chunk"]
+        question_id = request.POST.get("questionId")  # 질문 ID를 사용하여 파일 구분
+
+        if not question_id:
+            return JsonResponse({"error": "Missing questionId"}, status=400)
+
+        # 질문 ID를 기반으로 임시 파일 경로 설정
+        temp_file_path = os.path.join(TEMP_CHUNKS_DIR, f"{question_id}.wav")
+
+        # 청크 데이터를 추가 모드("ab")로 저장
+        with open(temp_file_path, "ab") as f:
+            f.write(chunk.read())
+
+        return JsonResponse({"message": "Chunk received"})
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
+
+@csrf_exempt
+def finalize_audio(request):
+    """ 저장된 청크 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
+    if request.method == "POST":
+        question_id = request.POST.get("questionId")  # 질문 ID를 사용해 파일을 찾음
+
+        if not question_id:
+            return JsonResponse({"error": "Missing questionId"}, status=400)
+
+        temp_file_path = os.path.join(TEMP_CHUNKS_DIR, f"{question_id}.wav")
+
+        if os.path.exists(temp_file_path):
+            # S3 업로드 경로 설정
+            s3_filename = f"audio/{question_id}_recording.wav"
+            s3_url = upload_to_s3(temp_file_path, s3_filename)
+
+            # 로컬 파일 삭제
+            os.remove(temp_file_path)
+
+            return JsonResponse({"message": "Upload successful", "s3_url": s3_url})
+
+        return JsonResponse({"error": "No file found"}, status=400)
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
 

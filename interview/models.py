@@ -1,6 +1,4 @@
 from django.db import models
-
-# Create your models here.
     
 # jobposting 
 class JobPosting(models.Model):
@@ -25,22 +23,63 @@ class Resume(models.Model):
     self_development = models.TextField(default="")
 
     job_posting = models.ForeignKey(JobPosting, on_delete=models.SET_NULL,null=True, blank=True) # 지원공고 연결
-
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
-
 
 # questions
 class Question(models.Model):
     user_id = models.IntegerField()
     text = models.TextField()
     category = models.CharField(max_length=100)
-    order = models.IntegerField()
-    is_used = models.BooleanField(default=False)
+    order = models.IntegerField() # 질문 순서
+    is_used = models.BooleanField(default=False) # 사용 여부
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"Question {self.order}: {self.text[:50]}..."
+
+# 답변
+class Answer(models.Model):
+    user_id = models.IntegerField()
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    audio_url = models.URLField(default="")  # S3에 저장된 음성 파일 URL 
+    transcribed_text = models.TextField()  # Whisper로 변환된 텍스트
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"User {self.user_id} | {self.category} | Order {self.order}"
+        return f"Answer for Question {self.question.order}"
+
+# 평가
+class Evaluation(models.Model):
+    answer = models.OneToOneField(Answer, on_delete=models.CASCADE)
+    total_score = models.IntegerField()  # 총점 (50점 만점)
+    
+    # 평가 점수들 (각각 10점 만점)
+    scores = models.JSONField(default=dict)  # {
+        # 'question_understanding': 8,
+        # 'logical_flow': 7,
+        # 'content_specificity': 9,
+        # 'problem_solving': 8,
+        # 'organizational_fit': 8
+    # }
+    
+    # 비언어적 평가 점수들 (각각 10점 만점)
+    nonverbal_scores = models.JSONField(default=dict)  # {
+        # 'speaking_speed': 8,
+        # 'pronunciation': 9,
+        # 'stuttering': 7
+    # }
+    
+    # 개선사항 피드백
+    improvements = models.JSONField(default=list)  # ["개선사항1", "개선사항2", ...]
+    nonverbal_improvements = models.JSONField(default=list)  # ["비언어적 개선사항1", ...]
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Evaluation for Answer {self.answer.id}"
 

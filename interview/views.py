@@ -2,8 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
 from .forms import ResumeForm
-from .models import Resume, Question, JobPosting
-import utils
+from .models import Resume, Question, JobPosting, Answer, Evaluation
+# import utils
 from .utils import audio_to_text, upload_to_s3
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -47,15 +47,67 @@ def resume_form(request):
     return render(request, 'resume_form.html', {'form': form})
 
 
+# 리포트 생성을 위한 데이터 가져오기 API
+@api_view(['GET'])
+def get_interview_report(request, user_id):
+    try:
+        # 디버깅을 위한 print문 추가
+        print(f"Requesting interview report for user_id: {user_id}")
+        
+        # 질문 데이터만 가져오기
+        questions = Question.objects.filter(user_id=user_id)
+        
+        # 디버깅: 질문 개수와 내용 확인
+        print(f"Found {questions.count()} questions")
+        for q in questions:
+            print(f"Question {q.id}: {q.text}")
+        
+        interview_data = []
+        for question in questions:
+            question_data = {
+                'question': {
+                    'id': question.id,
+                    'text': question.text,
+                    'order': getattr(question, 'order', 0)  # order 필드가 없을 경우 기본값 0
+                },
+                'answer': {
+                    'transcribed_text': '답변 데이터가 아직 없습니다.'
+                }
+            }
+            interview_data.append(question_data)
+        
+        print(f"Returning {len(interview_data)} items")  # 디버깅
+        
+        return Response({
+            'status': 'success',
+            'data': interview_data
+        })
+        
+    except Exception as e:
+        print(f"Error in get_interview_report: {e}")
+        import traceback
+        traceback.print_exc()  # 상세한 에러 정보 출력
+        return Response({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+
 # 결과 리포트 페이지 
 def interview_report(request, user_id):
     """
     면접 리포트 페이지를 렌더링 합니다.
     """
+    resume = get_object_or_404(Resume, id=user_id)
+
+    questions = Question.objects.filter(user_id=user_id).order_by('order')
+
     context = {
-        'user_id': user_id
+        'candidate_name': resume.name,
+        'user_id': user_id,
     }
-    return render(request, 'report.html')
+    return render(request, 'report.html', context)
+
     
 
 # 이력서 텍스트 변환
@@ -314,35 +366,6 @@ def check_questions(request):
         question_list = []
 
     return Response({"questions": question_list}, status=200)
-
-# 이름과 질문 가져오는 함수
-def get_report_data(request, user_id):
-    """
-    특정 사용자의 이름과 면접 질문을 가져오는 API
-    """
-    # Resume에서 사용자 이름 가져오기
-    resume = get_object_or_404(Resume, id=user_id)
-
-    # 사용된 질문만 가져오기 (is_used=True)
-    used_questions = Question.objects.filter(user_id=user_id, is_used=True).order_by('order')
-
-    # JSON 응답 형식으로 데이터 반환
-    response_data = {
-        'name': resume.name,
-        'questions': [
-            {
-                'id': f"Q{q.order}",
-                'question': q.text,
-                'category': q.category,
-                'summary': "",  # 요약 데이터를 나중에 추가 가능
-                'improvements': []  # 개선사항 데이터를 나중에 추가 가능
-            }
-            for q in used_questions
-        ]
-    }
-    
-    return JsonResponse(response_data)
-
 
 
 # 청크 저장 폴더

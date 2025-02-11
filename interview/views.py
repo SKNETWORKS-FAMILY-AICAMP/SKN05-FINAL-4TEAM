@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from .forms import ResumeForm
 from .models import Resume, Question, JobPosting
 import utils
-from .utils import audio_to_text, generate_presigned_url, get_public_url, upload_to_s3
+from .utils import audio_to_text, upload_to_s3
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q

@@ -289,7 +289,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("modalTotalTime").textContent = `${totalMinutes}분 ${totalSeconds}초`;
         document.getElementById("completionModal").style.display = "block";
 
-        // let reportBtn = document.getElementById("reportBtn");
         reportBtn.disabled = false;
     }
 
@@ -303,48 +302,17 @@ document.addEventListener("DOMContentLoaded", () => {
         return cookieValue || "";
     }
 
-
-    // 리포트 보기 함수
-    // function viewReport() {
-    //     window.location.href = "{% url 'report' %}";
-    // }
-    function viewReport() {
-        let reportBtn = document.getElementById("reportBtn");
-        let reportUrl = reportBtn.getAttribute("data-url");
-    
-        if (reportUrl) {
-            window.location.href = reportUrl;
-        } else {
-            console.error("리포트 URL을 찾을 수 없습니다.");
-        }
-        window.viewReport = viewReport;
+    // 면접 중간 메인페이지로 이동하기
+    if (homeButton) {
+        homeButton.addEventListener("click", (event) => {
+            const confirmed = confirm("면접을 중단하시겠습니까?\n중단 시 지금까지의 진행 내용이 저장되지 않습니다.");
+            if (!confirmed) {
+                event.preventDefault();
+            }
+        });
+    } else{
+        console.error("homeButton 요소를 찾을 수 없습니다.");
     }
-
-    // 홈으로 이동 시 확인
-    function confirmExit() {
-        const homeButton = document.getElementById("homeButton");
-        const url = homeButton.getAttribute("data-url");
-
-        const confirmed = confirm("면접을 중단하시겠습니까?\n중단 시 지금까지의 진행 내용이 저장되지 않습니다.");
-        if (confirmed) {
-            // window.location.href = url;
-            window.location.href = "{% url 'main %}";
-        }
-        return false;
-    }
-
-    // 브라우저 뒤로가기 방지
-    window.history.pushState(null, "", window.location.href);
-    window.onpopstate = function (event) {
-        event.preventDefault();
-        window.history.pushState(null, "", window.location.href);
-        confirmExit();
-    };
-
-    document.querySelector(".nav a").addEventListener("click", e => {
-        e.preventDefault();
-        confirmExit();
-    });
 
     startTotalTimer(); // 총 타이머 시작
 });

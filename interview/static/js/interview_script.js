@@ -25,12 +25,13 @@ document.addEventListener("DOMContentLoaded", () => {
     let totalTimerInterval;
 
     let mediaRecorder;
+    // let audioChunks = [];
     let audioStream;
     let audioBlob;
     let audioUrl;
     let stream;
     let hasMediaPermission = false;
-    
+
 
     function updateTimerDisplay() {
         timerElement.textContent = timeLeft;
@@ -105,7 +106,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // 녹음 시작
     async function startRecording() {
         try {
             audioChunks = [];
@@ -145,20 +145,24 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     
-    // 녹음 종료
+    // 🔥 녹음 종료
     async function stopRecording() {
         if (mediaRecorder && isRecording) {
             mediaRecorder.stop();
             isRecording = false;
-    
+
             // 마이크 스트림 정리
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
-    
+
             // 버튼 상태 변경
             startButton.disabled = false;
             stopButton.disabled = true;
+            clearInterval(questionTimerInterval);
+            timeLeft = 90; // 타이머 리셋
+            updateTimerDisplay();
+            nextQuestion();
         }
     }
     
@@ -178,31 +182,38 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     
+
     // 🔥 서버에서 모든 청크를 합쳐 S3로 업로드 요청
     async function finalizeAudio(questionId) {
-        try {
-            const response = await fetch("/finalize_audio/", {
-                method: "POST",
-                body: JSON.stringify({ questionId }),
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            });
-    
-            if (!response.ok) {
-                throw new Error("S3 업로드 실패");
+        // try {
+        const response = await fetch("/finalize_audio/", {
+            method: "POST",
+            body: JSON.stringify({ questionId }),
+            headers: {
+                "Content-Type": "application/json"
             }
-        } catch (error) {
-            console.error("최종 업로드 실패:", error);
-            alert("음성 파일을 S3에 업로드하는 중 오류가 발생했습니다.");
-        }
+        });
+    
+            // if (!response.ok) {
+            //     throw new Error("S3 업로드 실패");
+            // }
+        // }  
+        // catch (error) {
+        //     console.error("최종 업로드 실패:", error);
+        //     alert("음성 파일을 S3에 업로드하는 중 오류가 발생했습니다.");
+        // }
     }
 
     startButton.addEventListener("click", async () => {
-        await startRecording();
-        startQuestionTimer();
+        if (!isRecording) {
+            isRecording = true;
+            startButton.disabled = true; // "녹음 시작" 버튼 비활성화
+            stopButton.disabled = false; // "녹음 종료" 버튼 활성화
+            startQuestionTimer();  // 녹음 시작과 함께 타이머 시작
+            await startRecording();
+        }
     });
-    
+
     stopButton.addEventListener("click", async () => {
         await stopRecording();
     });
@@ -261,7 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 // 다음 질문을 화면에 표시
                 questionTextElement.textContent = data.question;
-                    questionIdInput.value = data.question_id;
+                questionIdInput.value = data.question_id;
                 currentQuestionIndex++;
                 updateQuestionNumber(); // 질문 번호 UI 업데이트
                 timeLeft = 90; // 타이머 초기화
@@ -281,7 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function completeInterview() {
         clearInterval(questionTimerInterval);
         clearInterval(totalTimerInterval);
-    
+        
         document.querySelector(".interview-layout").style.display = "none";
         document.getElementById("voiceControls").style.display = "none";
 
@@ -304,7 +315,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return cookieValue || "";
     }
 
-    // 면접 중간 메인페이지로 이동하기
+    // 면접 중간메인페이지로 이동하기
     if (homeButton) {
         homeButton.addEventListener("click", (event) => {
             const confirmed = confirm("면접을 중단하시겠습니까?\n중단 시 지금까지의 진행 내용이 저장되지 않습니다.");

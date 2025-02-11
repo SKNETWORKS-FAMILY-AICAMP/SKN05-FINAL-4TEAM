@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const result = await response.json();
-        console.log('Received data:', result);
+        console.log('Received data:', result); // 데이터 확인용 로그
 
         if (!result.data || result.data.length === 0) {
             throw new Error('No interview data found');
@@ -135,42 +135,55 @@ document.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('questionContainer');
         if (result.data && result.data.length > 0) {
             result.data.forEach((item, index) => {
-                container.innerHTML += createQuestionCard(item);
+                // 질문만 표시하는 간단한 카드 생성
+                container.innerHTML += `
+                    <div class="question-card">
+                        <div class="question-header">
+                            <h4>Q${index + 1}. ${item.question.text}</h4>
+                        </div>
+                    </div>
+                `;
             });
+            console.log('질문 카드 렌더링 완료'); // 렌더링 완료 확인용 로그
 
-            // 레이더 차트 생성
-            result.data.forEach(data => {
-                const scores = [
-                    data.evaluation.scores.question_understanding,
-                    data.evaluation.scores.logical_flow,
-                    data.evaluation.scores.content_specificity,
-                    data.evaluation.scores.problem_solving,
-                    data.evaluation.scores.organizational_fit
-                ];
-                createRadarChart(data.question.id, scores);
-            });
+            try {
+                // 레이더 차트 생성 시도
+                result.data.forEach(data => {
+                    if (data.evaluation && data.evaluation.scores) {
+                        const scores = [
+                            data.evaluation.scores.question_understanding,
+                            data.evaluation.scores.logical_flow,
+                            data.evaluation.scores.content_specificity,
+                            data.evaluation.scores.problem_solving,
+                            data.evaluation.scores.organizational_fit
+                        ];
+                        createRadarChart(data.question.id, scores);
+                    }
+                });
 
-            // 전체 평균 점수 계산 및 차트 생성
-            const averageScores = calculateAverageScores(result.data);
-            createOverallCharts(averageScores);
+                // 전체 평균 점수 계산 및 차트 생성 시도
+                const averageScores = calculateAverageScores(result.data);
+                createOverallCharts(averageScores);
+            } catch (chartError) {
+                console.log('차트 생성 중 오류 발생 (무시됨):', chartError);
+            }
         } else {
             container.innerHTML = '<div class="no-data">면접 데이터가 없습니다.</div>';
         }
 
         // PDF 다운로드 버튼 이벤트 리스너 추가
-        console.log('이벤트 리스너 추가 시작'); // 디버깅 로그
+        console.log('이벤트 리스너 추가 시작');
         const downloadButton = document.querySelector('.download-button');
         if (downloadButton) {
-            console.log('다운로드 버튼 찾음'); // 디버깅 로그
-            downloadButton.removeAttribute('onclick');
+            console.log('다운로드 버튼 찾음');
             downloadButton.addEventListener('click', function(e) {
-                console.log('다운로드 버튼 클릭됨'); // 디버깅 로그
+                console.log('다운로드 버튼 클릭됨');
                 e.preventDefault();
                 window.downloadPDF();
             });
-            console.log('이벤트 리스너 추가 완료'); // 디버깅 로그
+            console.log('이벤트 리스너 추가 완료');
         } else {
-            console.log('다운로드 버튼을 찾을 수 없음'); // 디버깅 로그
+            console.log('다운로드 버튼을 찾을 수 없음');
         }
 
     } catch (error) {
@@ -180,47 +193,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-// 질문 카드 생성 함수
-function createQuestionCard(data) {
-    const { question, answer, evaluation } = data;
-    const scores = [
-        evaluation.scores.question_understanding,
-        evaluation.scores.logical_flow,
-        evaluation.scores.content_specificity,
-        evaluation.scores.problem_solving,
-        evaluation.scores.organizational_fit
-    ];
-
-    return `
-        <div class="question-card">
-            <div class="question-header">
-                <h4>Q. ${question.text}</h4>
-                <div class="total-score">${calculateTotalScore(scores)}/50</div>
-            </div>
-            <div class="answer-box">
-                <p class="answer-label">답변 내용</p>
-                <p class="answer-text">${answer.transcribed_text}</p>
-            </div>
-            <div class="analysis-container">
-                <div class="metrics-section">
-                    <div class="chart-container">
-                        <canvas id="radarChart${question.id}"></canvas>
-                    </div>
-                </div>
-                <div class="feedback-section">
-                    <div class="improvement-box">
-                        <h5>개선사항</h5>
-                        ${evaluation.improvements.map(imp => `<p>💡 ${imp}</p>`).join('')}
-                    </div>
-                    <div class="improvement-box">
-                        <h5>비언어적 개선사항</h5>
-                        ${evaluation.nonverbal_improvements.map(imp => `<p>💡 ${imp}</p>`).join('')}
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
 
 // 레이더 차트 생성 함수
 function createRadarChart(questionId, scores) {

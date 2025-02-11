@@ -13,6 +13,7 @@ from django.db import transaction
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import os
+import json
 
 
 # 메인 페이지
@@ -398,24 +399,48 @@ def upload_chunk(request):
 def finalize_audio(request):
     """ 저장된 청크 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
     if request.method == "POST":
-        question_id = request.POST.get("questionId")  # 질문 ID를 사용해 파일을 찾음
+        try:
+            # JSON 요청인지 확인하고 데이터 읽기
+            data = json.loads(request.body.decode("utf-8"))
+            question_id = data.get("questionId")
+        except json.JSONDecodeError:
+            # JSON 형식이 아니면 기존 방식 사용
+            question_id = request.POST.get("questionId")
+
+        # 🛠 디버깅: questionId가 올바르게 들어오는지 확인
+        print(f"finalize_audio() 호출됨, questionId: {question_id}")
 
         if not question_id:
+            print("오류: Missing questionId")
             return JsonResponse({"error": "Missing questionId"}, status=400)
 
         temp_file_path = os.path.join(TEMP_CHUNKS_DIR, f"{question_id}.wav")
 
-        if os.path.exists(temp_file_path):
+        # 🛠 디버깅: temp_file_path가 존재하는지 확인
+        if not os.path.exists(temp_file_path):
+            print(f"오류: {temp_file_path} 파일이 존재하지 않음")
+            return JsonResponse({"error": "No file found"}, status=400)
+
+        try:
             # S3 업로드 경로 설정
             s3_filename = f"audio/{question_id}_recording.wav"
+            print(f"S3 업로드 시작: {temp_file_path} → {s3_filename}")
+
             s3_url = upload_to_s3(temp_file_path, s3_filename)
+
+            if not s3_url:
+                print("오류: S3 업로드 실패")
+                return JsonResponse({"error": "S3 upload failed"}, status=500)
 
             # 로컬 파일 삭제
             os.remove(temp_file_path)
+            print(f"로컬 파일 삭제 완료: {temp_file_path}")
 
             return JsonResponse({"message": "Upload successful", "s3_url": s3_url})
 
-        return JsonResponse({"error": "No file found"}, status=400)
+        except Exception as e:
+            print(f"finalize_audio() 중 오류 발생: {e}")
+            return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request"}, status=400)
 

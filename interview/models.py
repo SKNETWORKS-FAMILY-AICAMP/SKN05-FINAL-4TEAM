@@ -57,7 +57,7 @@ class Answer(models.Model):
 # 평가
 class Evaluation(models.Model):
     answer = models.OneToOneField(Answer, on_delete=models.CASCADE)
-    total_score = models.IntegerField()  # 총점 (50점 만점)
+    total_score = models.IntegerField(default=0)  # 총점 (50점 만점)
     
     # 평가 점수들 (각각 10점 만점)
     scores = models.JSONField(default=dict)  # {

@@ -582,6 +582,15 @@ button.selected {
   opacity: 1 !important;
 }
 
+/* #realBtn i {
+    transition: transform 0.3s ease;
+}
+
+#realBtn:not(:disabled):hover i {
+    transform: translateX(5px);
+} */
+
+
 @media (max-width: 768px) {
     .job-list {
         grid-template-columns: 1fr;

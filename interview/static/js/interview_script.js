@@ -4,7 +4,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const reportButton = document.getElementById("reportButton");
     const buttonText = document.getElementById("buttonText");
     const loadingSpinner = document.getElementById("loadingSpinner");
-    
+    const homeButton = document.getElementById("homeButton");
+
     const timerElement = document.getElementById("timer");
     const totalTimerElement = document.getElementById("totalTime");
     const questionTextElement = document.getElementById("questionText");
@@ -104,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    // 녹음 시작
     async function startRecording() {
         try {
             audioChunks = [];
@@ -143,7 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     
-    // 🔥 녹음 종료
+    // 녹음 종료
     async function stopRecording() {
         if (mediaRecorder && isRecording) {
             mediaRecorder.stop();

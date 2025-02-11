@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from .forms import ResumeForm
 from .models import Resume, Question, JobPosting, Answer, Evaluation
 # import utils
-from .utils import upload_to_s3
+from .utils import upload_to_s3, evaluate_answer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q
@@ -51,32 +51,31 @@ def resume_form(request):
 @api_view(['GET'])
 def get_interview_report(request, user_id):
     try:
-        # 디버깅을 위한 print문 추가
         print(f"Requesting interview report for user_id: {user_id}")
         
-        # 질문 데이터만 가져오기
+        # 질문 데이터 가져오기
         questions = Question.objects.filter(user_id=user_id)
         
-        # 디버깅: 질문 개수와 내용 확인
         print(f"Found {questions.count()} questions")
-        for q in questions:
-            print(f"Question {q.id}: {q.text}")
         
         interview_data = []
         for question in questions:
+            # 해당 질문에 대한 답변 가져오기
+            answer = Answer.objects.filter(question_id=question.id).first()
+            
             question_data = {
                 'question': {
                     'id': question.id,
                     'text': question.text,
-                    'order': getattr(question, 'order', 0)  # order 필드가 없을 경우 기본값 0
+                    'order': getattr(question, 'order', 0)
                 },
                 'answer': {
-                    'transcribed_text': '답변 데이터가 아직 없습니다.'
+                    'transcribed_text': answer.transcribed_text if answer else '답변 데이터가 아직 없습니다.'
                 }
             }
             interview_data.append(question_data)
         
-        print(f"Returning {len(interview_data)} items")  # 디버깅
+        print(f"Returning {len(interview_data)} items")
         
         return Response({
             'status': 'success',
@@ -86,7 +85,7 @@ def get_interview_report(request, user_id):
     except Exception as e:
         print(f"Error in get_interview_report: {e}")
         import traceback
-        traceback.print_exc()  # 상세한 에러 정보 출력
+        traceback.print_exc()
         return Response({
             'status': 'error',
             'message': str(e)
@@ -365,6 +364,61 @@ def check_questions(request):
         question_list = []
 
     return Response({"questions": question_list}, status=200)
+
+
+# 답변 평가 생성, 저장
+def create_evaluation(answer):
+    """답변에 대한 평가를 생성하고 저장하는 함수"""
+    try:
+        # 관련 데이터 가져오기
+        question = answer.question
+        job_posting = question.job_posting  # JobPosting과의 관계 필요
+
+        # 평가 실행
+        evaluation_result = evaluate_answer(
+            question_text=question.text,
+            answer_text=answer.transcribed_text,
+            responsibilities=job_posting.responsibilities,
+            qualifications=job_posting.qualifications
+        )
+
+        if evaluation_result:
+            # 점수 데이터 구성
+            scores = {
+                'question_understanding': evaluation_result['질문 이해도']['점수'],
+                'logical_flow': evaluation_result['논리적 전개']['점수'],
+                'content_specificity': evaluation_result['내용의 구체성']['점수'],
+                'problem_solving': evaluation_result['문제 해결 접근 방식']['점수'],
+                'organizational_fit': evaluation_result['핵심 기술 및 직무 수행 능력 평가']['점수']
+            }
+
+            # 개선사항 리스트 구성
+            improvements = [
+                evaluation_result['질문 이해도']['개선 사항'],
+                evaluation_result['논리적 전개']['개선 사항'],
+                evaluation_result['내용의 구체성']['개선 사항'],
+                evaluation_result['문제 해결 접근 방식']['개선 사항'],
+                evaluation_result['핵심 기술 및 직무 수행 능력 평가']['개선 사항']
+            ]
+
+            # 총점 계산
+            total_score = evaluation_result.get('총점', sum(scores.values()))
+
+            # Evaluation 객체 생성 또는 업데이트
+            evaluation, created = Evaluation.objects.update_or_create(
+                answer=answer,
+                defaults={
+                    'total_score': total_score,
+                    'scores': scores,
+                    'improvements': improvements
+                }
+            )
+
+            return evaluation
+
+    except Exception as e:
+        print(f"Error creating evaluation: {e}")
+        return None
 
 
 # 청크 저장 폴더

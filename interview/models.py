@@ -47,7 +47,7 @@ class Question(models.Model):
 class Answer(models.Model):
     user_id = models.IntegerField()
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    audio_url = models.URLField(default="")  # S3에 저장된 음성 파일 URL 
+    audio_url = models.URLField(null=True, blank=True)  # S3에 저장된 음성 파일 URL 
     transcribed_text = models.TextField()  # Whisper로 변환된 텍스트
     created_at = models.DateTimeField(auto_now_add=True)
 

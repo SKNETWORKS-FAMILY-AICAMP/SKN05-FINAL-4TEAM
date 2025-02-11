@@ -297,3 +297,79 @@ def upload_to_s3(file_path, s3_key):
     except Exception as e:
         print(f"S3 업로드 실패: {e}")
         return None
+
+
+# 답변 평가 모델(비언어 평가 제외)
+def evaluate_answer(question_text, answer_text, responsibilities, qualifications):
+    '''답변 내용 평가 모델'''
+    openai.api_key = settings.OPENAI_API_KEY
+    
+    prompt = f"""
+    아래는 면접 질문과 지원자의 응답입니다. 이 응답을 평가 기준에 따라 점수화하고, 각 항목별로 개선사항을 JSON 형식으로 반환하세요.
+
+    === 면접 질문 ===
+    {question_text}
+
+    === 지원자 답변 ===
+    {answer_text}
+
+    === 평가 기준 및 점수 부여 기준 ===
+    1. 질문 이해도 (0~10점):
+       - 10점: 질문을 완벽히 이해하고, 논리적으로 답변함.
+       - 8~9점: 질문을 이해했으나 일부 부족한 설명이 있음.
+       - 6~7점: 질문의 핵심을 이해했으나, 논리적 흐름에서 약간의 오류가 있음.
+       - 5점 이하: 질문의 핵심을 충분히 이해하지 못했거나, 명확하지 않은 답변을 제공함.
+
+    2. 논리적 전개 (0~10점):
+       - 10점: 서론-본론-결론이 명확하며, 논리적 흐름이 자연스러움.
+       - 8~9점: 전체적인 논리는 좋으나 일부 구성이 부족함.
+       - 6~7점: 논리적 흐름이 다소 불완전하며, 연결이 부자연스러움.
+       - 5점 이하: 논리적 전개가 부족하여 이해하기 어려운 답변임.
+
+    3. 내용의 구체성 (0~10점):
+       - 10점: 구체적인 예시와 데이터를 활용하여 풍부한 설명을 제공함.
+       - 8~9점: 구체적인 내용이 포함되어 있으나 추가적인 설명이 필요함.
+       - 6~7점: 일부 구체성이 부족하며, 답변이 다소 일반적임.
+       - 5점 이하: 추상적인 답변으로 인해 이해하기 어려움.
+
+    4. 문제 해결 접근 방식 (0~10점):
+       - 10점: 문제 해결 프로세스를 체계적으로 설명하고, 적절한 해결책을 제시함.
+       - 8~9점: 문제 해결 과정이 명확하지만, 구체적인 예시가 부족함.
+       - 6~7점: 문제 해결 과정이 부분적으로 설명되었으며, 흐름이 다소 불완전함.
+       - 5점 이하: 문제 해결 과정이 명확하게 설명되지 않음.
+
+    5. 핵심 기술 및 직무 수행 능력 평가 (0~10점):
+       - 10점: 지원자의 기술 역량과 실무 경험이 담당 업무 및 지원 자격 요건과 완벽히 부합함.
+       - 8~9점: 기술적 역량과 실무 경험이 대부분 부합하지만, 일부 추가 설명이 필요함.
+       - 6~7점: 기술적 역량은 있지만, 실무 경험이 다소 부족하거나 직접적인 연관성이 적음.
+       - 5점 이하: 기술적 역량이 담당 업무 및 지원 자격 요건과 크게 부합하지 않음.
+
+    === 회사의 담당 업무 및 지원 자격 ===
+    [담당 업무]
+    {responsibilities}
+
+    [지원 자격]
+    {qualifications}
+    """
+
+    # 평가 생성
+    while True:
+        try:
+            response = openai.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "당신은 전문 면접관입니다."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            return result
+
+        except json.JSONDecodeError:
+            prompt += "\n\n JSON 형식으로 다시 반환해주세요."
+            continue
+        except Exception as e:
+            print(f"Error in evaluate_answer: {e}")
+            return None

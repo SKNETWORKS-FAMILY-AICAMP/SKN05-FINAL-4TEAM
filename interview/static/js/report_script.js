@@ -132,19 +132,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // 질문 카드 렌더링
-        const container = document.getElementById('questionContainer');
-        if (result.data && result.data.length > 0) {
-            result.data.forEach((item, index) => {
-                // 질문만 표시하는 간단한 카드 생성
-                container.innerHTML += `
-                    <div class="question-card">
-                        <div class="question-header">
-                            <h4>Q${index + 1}. ${item.question.text}</h4>
+const container = document.getElementById('questionContainer');
+if (result.data && result.data.length > 0) {
+    result.data.forEach((item, index) => {
+        // 질문과 답변을 모두 표시하는 카드 생성
+        container.innerHTML += `
+            <div class="question-card">
+                <div class="question-header">
+                    <h4>Q${index + 1}. ${item.question.text}</h4>
+                    <div class="total-score"></div>
+                </div>
+                <div class="answer-box">
+                    <p class="answer-label">답변 내용</p>
+                    <p class="answer-content">${item.answer ? item.answer.transcribed_text : '답변 없음'}</p>
+                </div>
+                <div class="analysis-container" style="display: flex; gap: 20px;">
+                    <div class="metrics-section" style="flex: 1;">
+                        <div class="metrics-box" style="height: 300px;">
+                            <canvas id="radarChart${item.question.id}"></canvas>
                         </div>
                     </div>
-                `;
-            });
-            console.log('질문 카드 렌더링 완료'); // 렌더링 완료 확인용 로그
+                    <div class="improvement-section" style="flex: 1;">
+                        <div class="improvement-box" style="margin-bottom: 5px;"> 
+                            <div class="score-feedback">
+                                <p class="improvement" style="margin-bottom: 5px;">💡 평가 지표 개선사항:</p> 
+                                ${item.evaluation && item.evaluation.improvements ? 
+                                    item.evaluation.improvements.map(imp => `<p>- ${imp}</p>`).join('') : 
+                                    '<p>개선사항 없음</p>'}
+                            </div>
+                        </div>
+                        <div class="improvement-box">
+                            <div class="score-feedback">
+                                <p class="improvement" style="margin-bottom: 5px;">💡비언어적 개선사항:</p>
+                                ${item.evaluation && item.evaluation.nonverbal_improvements ? 
+                                    item.evaluation.nonverbal_improvements.map(imp => `<p>- ${imp}</p>`).join('') : 
+                                    '<p>개선사항 없음</p>'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    console.log('질문 및 답변 카드 렌더링 완료');
 
             try {
                 // 레이더 차트 생성 시도

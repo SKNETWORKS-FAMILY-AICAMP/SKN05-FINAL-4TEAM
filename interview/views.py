@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from .forms import ResumeForm
 from .models import Resume, Question, JobPosting, Answer, Evaluation
 # import utils
-from .utils import audio_to_text, upload_to_s3
+from .utils import upload_to_s3
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q
@@ -12,7 +12,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-import re
 import os
 
 
@@ -108,7 +107,6 @@ def interview_report(request, user_id):
     }
     return render(request, 'report.html', context)
 
-    
 
 # 이력서 텍스트 변환
 def get_resume_text(user_id):

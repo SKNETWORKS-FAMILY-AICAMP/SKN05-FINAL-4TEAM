@@ -13,4 +13,6 @@ urlpatterns = [
     path('interview-report/<int:user_id>/', views.interview_report, name='interview_report'),
     path('upload_chunk/', views.upload_chunk, name='upload_chunk'),
     path('finalize_audio/', views.finalize_audio, name='finalize_audio'),
+    path('transcribe_audio/', views.transcribe_audio, name='transcribe_audio'),
+    path('save_answers/', views.save_answers, name='save_answers'),
 ]

@@ -4,7 +4,7 @@ from .models import Resume, Question, JobPosting, Answer, Evaluation
 # JobPosting 모델 등록
 @admin.register(JobPosting)
 class JobPostingAdmin(admin.ModelAdmin):
-    list_display = ('company_name', 'job_title','created_at')
+    list_display = ('company_name', 'job_title', 'created_at')
     search_fields = ('company_name', 'job_title')
     list_filter = ('company_name',)
 
@@ -24,9 +24,9 @@ class ResumeAdmin(admin.ModelAdmin):
 # question 모델 등록
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('user_id', 'text', 'category','order', 'is_used', 'created_at')
-    list_filter = ('category', 'is_used')
+    list_display = ('user_id', 'text', 'category', 'order', 'is_used', 'created_at')
     search_fields = ('text',)
+    list_filter = ('category', 'is_used')
     
 # answer 모델 등록
 @admin.register(Answer)

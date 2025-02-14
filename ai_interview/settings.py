@@ -169,7 +169,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 RUNPOD_API_KEY = config("RUNPOD_API_KEY", default="")
 STT_ENDPOINT = config("STT_endpoint", default="")
 
-# rest framework를 json으로 설정
+# rest framework에서 API 응답을 JSON 형식으로만 반환
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',

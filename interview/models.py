@@ -22,7 +22,7 @@ class Resume(models.Model):
     teamwork_experience = models.TextField(default="")
     self_development = models.TextField(default="")
 
-    job_posting = models.ForeignKey(JobPosting, on_delete=models.SET_NULL,null=True, blank=True) # 지원공고 연결
+    job_posting = models.ForeignKey(JobPosting, on_delete=models.SET_NULL, null=True, blank=True) # 지원공고 연결
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -38,7 +38,7 @@ class Question(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['order']
+        ordering = ['order'] # order 필드를 기준으로 오름차순 정렬
 
     def __str__(self):
         return f"Question {self.order}: {self.text[:50]}..."

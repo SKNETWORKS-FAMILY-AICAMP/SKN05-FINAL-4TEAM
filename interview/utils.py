@@ -430,8 +430,8 @@ def evaluate_answer(question_text, answer_text, responsibilities, qualifications
     while True:
         try:
             response = openai.chat.completions.create(
-                # model="gpt-4",
-                model="gpt-3.5-turbo",
+                model="gpt-4",
+                # model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "당신은 전문 면접관입니다."},
                     {"role": "user", "content": prompt}

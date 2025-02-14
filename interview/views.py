@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from .forms import ResumeForm
 from .models import Resume, Question, JobPosting, Answer, Evaluation
 from .utils import audio_to_text, upload_to_s3, audio_analysis,  evaluate_answer, correct_transcription, summarize_answer
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 from .utils import generate_q
 from django.views.decorators.csrf import csrf_exempt
@@ -64,27 +64,44 @@ def get_interview_report(request, user_id):
         questions_data = []
 
         for question in questions:
+            # Answer와 Evaluation을 가져올 때 exists() 체크 추가
             answer = Answer.objects.filter(question=question).first()
-            evaluation = Evaluation.objects.filter(answer=answer).first() if answer else None
+            if not answer:
+                print(f"Question {question.id}에 대한 답변이 없습니다.")
+                continue
+                
+            evaluation = Evaluation.objects.filter(answer=answer).first()
+            if not evaluation:
+                print(f"Answer {answer.id}에 대한 평가가 없습니다.")
+                continue
 
-            evaluation_data = {}
-            if evaluation:
-                evaluation_data = {
-                    'scores': evaluation.scores,
-                    'total_score': evaluation.total_score,
-                    'improvements': evaluation.improvements,
-                    'nonverbal_improvements': evaluation.nonverbal_improvements
-                }
+            # 데이터가 제대로 들어있는지 디버깅
+            print(f"""
+            질문 ID: {question.id}
+            질문 내용: {question.text}
+            답변 내용: {answer.transcribed_text if answer else 'No answer'}
+            평가 점수: {evaluation.total_score if evaluation else 'No evaluation'}
+            """)
+
+            evaluation_data = {
+                'scores': evaluation.scores,
+                'total_score': evaluation.total_score,
+                'improvements': evaluation.improvements,
+                'nonverbal_improvements': evaluation.nonverbal_improvements
+            }
 
             question_data = {
                 'question_text': question.text,
                 'answer': {
-                    'transcribed_text': answer.transcribed_text if answer else '',
-                    'audio_url': answer.audio_url if answer else None
+                    'transcribed_text': answer.transcribed_text,
+                    'audio_url': answer.audio_url
                 },
                 'evaluation': evaluation_data
             }
             questions_data.append(question_data)
+
+        # 최종 데이터 확인
+        print("Report Data:", json.dumps(questions_data, indent=2, ensure_ascii=False))
 
         return Response({
             'status': 'success',
@@ -95,6 +112,8 @@ def get_interview_report(request, user_id):
 
     except Exception as e:
         print(f"Error in get_interview_report: {e}")
+        import traceback
+        traceback.print_exc()  # 상세한 에러 트레이스 출력
         return Response({
             'status': 'error',
             'message': str(e)
@@ -678,8 +697,7 @@ def process_interview_evaluation(request, user_id):
         }, status=500)
 
 
-# @csrf_exempt
-@api_view(['POST']) 
+@csrf_exempt  
 def upload_chunk(request):
     """ 청크 단위로 오디오 데이터를 서버에 저장하는 뷰 """
     # chunk = request.FILES["chunk"]
@@ -721,24 +739,26 @@ def upload_chunk(request):
         # ✅ 오류 발생 시 500 응답 반환
         return JsonResponse({"error": str(e)}, status=500)
 
-
-# @csrf_exempt
-@api_view(['POST'])
+@csrf_exempt
 def finalize_audio(request):
     """ 저장된 청크 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
     if request.method == "POST":
         try:
-            # ✅ FormData에서 데이터 가져오기
+            # 디버깅을 위한 로그 추가
+            print("Received POST data:", request.POST)
+            print("Received FILES:", request.FILES)
+            
+            # ✅ FormData에서 데이터 가져오기 (기존 코드 유지)
             question_id = request.POST.get("questionId")
-            user_id = request.POST.get("userId")
+            resume_id = request.POST.get("userId")
 
-            if not question_id or not user_id:
-                return JsonResponse({"error": "questionId 또는 userId가 누락되었습니다."}, status=400)
+            if not question_id or not resume_id:
+                return JsonResponse({"error": "questionId 또는 resume_id가 누락되었습니다."}, status=400)
 
             chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
 
             # ✅ S3 업로드
-            s3_filename = f"{user_id}_{question_id}.wav"
+            s3_filename = f"{resume_id}_{question_id}.wav"  # userId를 resume_id로 변경
             s3_url = upload_to_s3(chunk_file_path, s3_filename)
 
             if not s3_url:
@@ -789,13 +809,13 @@ def save_answers(request):
             print("📌 요청 데이터:", request.body.decode("utf-8"))
 
             data = json.loads(request.body.decode("utf-8"))
-            user_id = data.get("userId")
+            resume_id = data.get("userId")  # userId를 resume_id로 변경
             s3_urls = data.get("s3Urls")
             transactions = data.get("transcriptions")
 
             # ✅ 질문 데이터 가져오기 (`filter()` 사용)
-            questions = Question.objects.filter(user_id=user_id).order_by("id")
-            print(f"📌 user_id={user_id}의 질문 개수: {len(questions)}개")
+            questions = Question.objects.filter(resume_id=resume_id).order_by("id")  # user_id를 resume_id로 변경
+            print(f"📌 resume_id={resume_id}의 질문 개수: {len(questions)}개")  # 로그 메시지도 변경
 
             # ✅ 데이터 개수가 맞는지 확인
             if len(questions) != len(s3_urls):
@@ -809,10 +829,10 @@ def save_answers(request):
                     transcribed_text = transactions[i]
                     question = questions[i]
 
-                    print(f"✅ 저장 중: {user_id}, 질문: {question.text}, URL: {s3_url}")
+                    print(f"✅ 저장 중: {resume_id}, 질문: {question.text}, URL: {s3_url}")  # 로그 메시지도 변경
 
                     Answer.objects.create(
-                        user_id=user_id,
+                        user_id=resume_id,  # user_id를 resume_id로 변경
                         question=question,
                         audio_url=s3_url,
                         transcribed_text=transcribed_text

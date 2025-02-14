@@ -5,7 +5,7 @@ urlpatterns = [
     path('', views.main_page, name='main_page'),
     path('resume/', views.resume_form, name='resume_form'),
     path('generate_questions/', views.generate_questions, name='generate_questions'),
-    path('interview/<int:user_id>/', views.interview_page, name='interview'),
+    path('interview/<int:resume_id>/', views.interview_page, name='interview'),
     path('next_question/<int:user_id>/', views.next_question, name='next_question'),
     path('api/check_resume/', views.check_resume, name='check_resume'),
     path('api/check_questions/', views.check_questions, name='check_questions'),
@@ -15,4 +15,6 @@ urlpatterns = [
     path('finalize_audio/', views.finalize_audio, name='finalize_audio'),
     path('transcribe_audio/', views.transcribe_audio, name='transcribe_audio'),
     path('save_answers/', views.save_answers, name='save_answers'),
+    path('api/evaluate_answer/', views.evaluate_answer_view, name='evaluate_answer'),
+    path('api/process-interview-evaluation/<int:user_id>/', views.process_interview_evaluation, name='process_interview_evaluation'),
 ]

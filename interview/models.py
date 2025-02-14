@@ -30,22 +30,27 @@ class Resume(models.Model):
 
 # questions
 class Question(models.Model):
-    user_id = models.IntegerField()
+    resume = models.ForeignKey(Resume, on_delete=models.CASCADE, null=True)  # null=True 추가
     text = models.TextField()
     category = models.CharField(max_length=100)
     order = models.IntegerField() # 질문 순서
     is_used = models.BooleanField(default=False) # 사용 여부
+    job_posting = models.ForeignKey('JobPosting', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
+    
     class Meta:
-        ordering = ['order'] # order 필드를 기준으로 오름차순 정렬
+        ordering = ['order']
 
     def __str__(self):
         return f"Question {self.order}: {self.text[:50]}..."
 
+    def get_job_posting(self):
+        """job_posting 정보를 가져오는 메서드"""
+        return self.job_posting or self.resume.job_posting
+
 # 답변
 class Answer(models.Model):
-    user_id = models.IntegerField()
+    resume = models.ForeignKey(Resume, on_delete=models.CASCADE, null=True)  # null=True 추가
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     audio_url = models.URLField(null=True, blank=True)  # S3에 저장된 음성 파일 URL 
     transcribed_text = models.TextField()  # Whisper로 변환된 텍스트
@@ -60,20 +65,10 @@ class Evaluation(models.Model):
     total_score = models.IntegerField(default=0)  # 총점 (50점 만점)
     
     # 평가 점수들 (각각 10점 만점)
-    scores = models.JSONField(default=dict)  # {
-        # 'question_understanding': 8,
-        # 'logical_flow': 7,
-        # 'content_specificity': 9,
-        # 'problem_solving': 8,
-        # 'organizational_fit': 8
-    # }
+    scores = models.JSONField(default=dict)  
     
     # 비언어적 평가 점수들 (각각 10점 만점)
-    nonverbal_scores = models.JSONField(default=dict)  # {
-        # 'speaking_speed': 8,
-        # 'pronunciation': 9,
-        # 'stuttering': 7
-    # }
+    nonverbal_scores = models.JSONField(default=dict) 
     
     # 개선사항 피드백
     improvements = models.JSONField(default=list)  # ["개선사항1", "개선사항2", ...]

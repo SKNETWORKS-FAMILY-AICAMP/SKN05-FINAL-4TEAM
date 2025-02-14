@@ -327,7 +327,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.error) {
                 // 더 이상 질문이 없는 경우 인터뷰 종료 처리
                 completeInterview();
-
             } else {
                 // 다음 질문을 화면에 표시
                 questionTextElement.textContent = data.question;
@@ -342,16 +341,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 stopButton.disabled = true;
                 isRecording = false;
             }
-
         })
         .catch((error) => {
             console.error("다음 질문을 불러오는 중 오류 발생:", error);
         });
     }
 
-    async function completeInterview() {
-        const userId = userIdInput.value;
-
+    function completeInterview() {
         clearInterval(questionTimerInterval);
         clearInterval(totalTimerInterval);
         
@@ -365,8 +361,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("completionModal").style.display = "block";
 
         reportBtn.disabled = false;
-        await transcribeAll();
-        await saveAnswers(userId);
     }
 
 

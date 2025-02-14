@@ -220,7 +220,11 @@
                 type="button" 
                 id="realBtn" 
                 disabled
-                data-url="{% url 'interview' user_id=1 %}"
+                {% if resume %}
+                    data-url="{% url 'interview' resume_id=resume.id %}"
+                {% else %}
+                    data-url="#"
+                {% endif %}
                 >
                 면접 시작하기
                 <i class="fas fa-arrow-right"></i>

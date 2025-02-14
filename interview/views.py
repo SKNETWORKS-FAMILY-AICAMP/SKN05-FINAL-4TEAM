@@ -678,7 +678,8 @@ def process_interview_evaluation(request, user_id):
         }, status=500)
 
 
-@csrf_exempt
+# @csrf_exempt
+@api_view(['POST']) 
 def upload_chunk(request):
     """ 청크 단위로 오디오 데이터를 서버에 저장하는 뷰 """
     # chunk = request.FILES["chunk"]
@@ -721,7 +722,8 @@ def upload_chunk(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 
-@csrf_exempt
+# @csrf_exempt
+@api_view(['POST'])
 def finalize_audio(request):
     """ 저장된 청크 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
     if request.method == "POST":

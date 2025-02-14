@@ -23,9 +23,10 @@ document.addEventListener("DOMContentLoaded", () => {
     let isRecording = false;
     let questionTimerInterval;
     let totalTimerInterval;
+    let s3Urls = [];
+    let transcriptions = [];
 
     let mediaRecorder;
-    // let audioChunks = [];
     let audioStream;
     let audioBlob;
     let audioUrl;
@@ -107,37 +108,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function startRecording() {
+        userId = userIdInput.value;
         try {
-            audioChunks = [];
             currentQuestionId = questionIdInput.value;
     
             // 마이크 권한 확인 후 요청
             if (!hasMediaPermission) {
                 await requestMediaPermission();
             }
-    
+            
+            // 녹음 준비
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
     
-            // 🔹 1초마다 녹음 데이터(청크)를 서버에 전송
+            // 녹음 데이터(청크)를 서버에 전송
             mediaRecorder.ondataavailable = async (event) => {
                 if (event.data.size > 0) {
                     await sendChunkToServer(event.data, currentQuestionId);
                 }
             };
-    
-            // 🔹 녹음이 종료될 때 마지막 청크 강제 전송 + S3 업로드 요청
-            mediaRecorder.onstop = async () => {
-                await finalizeAudio(currentQuestionId);
-            };
-    
+
+            // mediaRecorder.onstop = async () => {
+            //     console.log("📢 onstop 실행됨: finalizeAudio() 호출");
+            //     await finalizeAudio(currentQuestionId, userId);
+            // };
+            
             // 🔹 1초마다 데이터 청크 생성 후 서버 전송
             mediaRecorder.start(1000);
-    
-            // 버튼 상태 변경
-            startButton.disabled = true;
-            stopButton.disabled = false;
-            isRecording = true;
+
         } catch (error) {
             console.error("녹음 시작 실패:", error);
             alert("녹음을 시작할 수 없습니다.");
@@ -145,28 +143,24 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     
-    // 🔥 녹음 종료
+    // 녹음 종료
     async function stopRecording() {
         if (mediaRecorder && isRecording) {
+            currentQuestionId = questionIdInput.value;
+            userId = userIdInput.value;
             mediaRecorder.stop();
             isRecording = false;
+            await finalizeAudio(currentQuestionId, userId); //
 
             // 마이크 스트림 정리
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
             }
-
-            // 버튼 상태 변경
-            startButton.disabled = false;
-            stopButton.disabled = true;
-            clearInterval(questionTimerInterval);
-            timeLeft = 90; // 타이머 리셋
-            updateTimerDisplay();
-            nextQuestion();
         }
     }
     
-    // 🔥 작은 청크 단위로 서버에 전송
+    
+    // 작은 청크 단위로 서버에 전송
     async function sendChunkToServer(chunk, questionId) {
         let formData = new FormData();
         formData.append("chunk", chunk);
@@ -179,36 +173,48 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         } catch (error) {
             console.error("청크 업로드 실패:", error);
+            alert("청크 업로드 중 오류가 발생했습니다.");
         }
     }
     
 
-    // 🔥 서버에서 모든 청크를 합쳐 S3로 업로드 요청
-    async function finalizeAudio(questionId) {
-        // try {
-        const response = await fetch("/finalize_audio/", {
-            method: "POST",
-            body: JSON.stringify({ questionId }),
-            headers: {
-                "Content-Type": "application/json"
-            }
-        });
+    // 서버에서 모든 청크를 합쳐 S3로 업로드 요청
+    async function finalizeAudio(questionId, userId) {
+        try {
+            let formData = new FormData();
+            formData.append("questionId", questionId);
+            formData.append("userId", userId);
     
-            // if (!response.ok) {
-            //     throw new Error("S3 업로드 실패");
-            // }
-        // }  
-        // catch (error) {
-        //     console.error("최종 업로드 실패:", error);
-        //     alert("음성 파일을 S3에 업로드하는 중 오류가 발생했습니다.");
-        // }
+            const response = await fetch("/finalize_audio/", {
+                method: "POST",
+                body: formData
+            });
+    
+            if (!response.ok) {
+                throw new Error(`HTTP 오류: ${response.status}`);
+            }
+    
+            const result = await response.json();
+    
+            if (result.s3_url) {
+                s3Urls.push(result.s3_url);
+                console.log(`✅ S3 업로드 완료: ${result.s3_url}`);
+            } else {
+                console.warn("⚠ S3 URL이 응답에 없습니다.");
+            }
+    
+        } catch (error) { 
+            console.error("S3 업로드 실패:", error);
+            alert("음성 파일을 S3에 업로드하는 중 오류가 발생했습니다.");
+        }
     }
+
 
     startButton.addEventListener("click", async () => {
         if (!isRecording) {
+            startButton.disabled = true;
+            stopButton.disabled = false;
             isRecording = true;
-            startButton.disabled = true; // "녹음 시작" 버튼 비활성화
-            stopButton.disabled = false; // "녹음 종료" 버튼 활성화
             startQuestionTimer();  // 녹음 시작과 함께 타이머 시작
             await startRecording();
         }
@@ -216,7 +222,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
     stopButton.addEventListener("click", async () => {
         await stopRecording();
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        clearInterval(questionTimerInterval);
+        timeLeft = 90; // 타이머 리셋
+        updateTimerDisplay();
+        nextQuestion();
     });
+
+
+    async function transcribeAll() {
+        try {
+            const response = await fetch("/transcribe_audio/", {
+                method: "POST",
+                body: JSON.stringify({ s3_urls: s3Urls }),
+                headers: { "Content-Type": "application/json" }
+            });
+    
+            if (!response.ok) {
+                throw new Error(`HTTP 오류: ${response.status}`);
+            }
+    
+            const result = await response.json();
+    
+            transcriptions = result.transcriptions || [];
+            return transcriptions;
+    
+        } catch (error) {
+            console.error("❌ transcribeAll() 실패:", error);
+            transcriptions = [];
+            return [];
+        }
+    }
+    
+
+    async function saveAnswers(userId) {
+        try {
+            if (transcriptions.length === 0) {
+                console.warn("⚠ 변환된 데이터가 없습니다. 저장하지 않습니다.");
+                return;
+            }
+            console.log(userId, s3Urls, transcriptions)
+            const response = await fetch("/save_answers/", {
+                method: "POST",
+                body: JSON.stringify({ userId, s3Urls, transcriptions }),  // ✅ 변환된 데이터 전송
+                headers: { "Content-Type": "application/json" }
+            });
+    
+            const result = await response.json();
+    
+        } catch (error) {
+            console.error("DB 저장 실패:", error);
+        }
+    }
 
     async function generateReport() {
         reportBtn.style.display = "none";
@@ -269,6 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.error) {
                 // 더 이상 질문이 없는 경우 인터뷰 종료 처리
                 completeInterview();
+
             } else {
                 // 다음 질문을 화면에 표시
                 questionTextElement.textContent = data.question;
@@ -283,13 +342,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 stopButton.disabled = true;
                 isRecording = false;
             }
+
         })
         .catch((error) => {
             console.error("다음 질문을 불러오는 중 오류 발생:", error);
         });
     }
 
-    function completeInterview() {
+    async function completeInterview() {
+        const userId = userIdInput.value;
+
         clearInterval(questionTimerInterval);
         clearInterval(totalTimerInterval);
         
@@ -303,6 +365,8 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("completionModal").style.display = "block";
 
         reportBtn.disabled = false;
+        await transcribeAll();
+        await saveAnswers(userId);
     }
 
 

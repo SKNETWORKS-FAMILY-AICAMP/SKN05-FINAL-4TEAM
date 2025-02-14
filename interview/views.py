@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from .forms import ResumeForm
 from .models import Resume, Question, JobPosting, Answer, Evaluation
 # import utils
-from .utils import upload_to_s3, evaluate_answer
+from .utils import audio_to_text, upload_to_s3
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .utils import generate_q
@@ -367,86 +367,101 @@ def check_questions(request):
 
 
 # 답변 평가 생성, 저장
-def create_evaluation(answer):
-    """답변에 대한 평가를 생성하고 저장하는 함수"""
-    try:
-        # 관련 데이터 가져오기
-        question = answer.question
-        job_posting = question.job_posting  # JobPosting과의 관계 필요
+# def create_evaluation(answer):
+#     """답변에 대한 평가를 생성하고 저장하는 함수"""
+#     try:
+#         # 관련 데이터 가져오기
+#         question = answer.question
+#         job_posting = question.job_posting  # JobPosting과의 관계 필요
 
-        # 평가 실행
-        evaluation_result = evaluate_answer(
-            question_text=question.text,
-            answer_text=answer.transcribed_text,
-            responsibilities=job_posting.responsibilities,
-            qualifications=job_posting.qualifications
-        )
+#         # 평가 실행
+#         evaluation_result = evaluate_answer(
+#             question_text=question.text,
+#             answer_text=answer.transcribed_text,
+#             responsibilities=job_posting.responsibilities,
+#             qualifications=job_posting.qualifications
+#         )
 
-        if evaluation_result:
-            # 점수 데이터 구성
-            scores = {
-                'question_understanding': evaluation_result['질문 이해도']['점수'],
-                'logical_flow': evaluation_result['논리적 전개']['점수'],
-                'content_specificity': evaluation_result['내용의 구체성']['점수'],
-                'problem_solving': evaluation_result['문제 해결 접근 방식']['점수'],
-                'organizational_fit': evaluation_result['핵심 기술 및 직무 수행 능력 평가']['점수']
-            }
+#         if evaluation_result:
+#             # 점수 데이터 구성
+#             scores = {
+#                 'question_understanding': evaluation_result['질문 이해도']['점수'],
+#                 'logical_flow': evaluation_result['논리적 전개']['점수'],
+#                 'content_specificity': evaluation_result['내용의 구체성']['점수'],
+#                 'problem_solving': evaluation_result['문제 해결 접근 방식']['점수'],
+#                 'organizational_fit': evaluation_result['핵심 기술 및 직무 수행 능력 평가']['점수']
+#             }
 
-            # 개선사항 리스트 구성
-            improvements = [
-                evaluation_result['질문 이해도']['개선 사항'],
-                evaluation_result['논리적 전개']['개선 사항'],
-                evaluation_result['내용의 구체성']['개선 사항'],
-                evaluation_result['문제 해결 접근 방식']['개선 사항'],
-                evaluation_result['핵심 기술 및 직무 수행 능력 평가']['개선 사항']
-            ]
+#             # 개선사항 리스트 구성
+#             improvements = [
+#                 evaluation_result['질문 이해도']['개선 사항'],
+#                 evaluation_result['논리적 전개']['개선 사항'],
+#                 evaluation_result['내용의 구체성']['개선 사항'],
+#                 evaluation_result['문제 해결 접근 방식']['개선 사항'],
+#                 evaluation_result['핵심 기술 및 직무 수행 능력 평가']['개선 사항']
+#             ]
 
-            # 총점 계산
-            total_score = evaluation_result.get('총점', sum(scores.values()))
+#             # 총점 계산
+#             total_score = evaluation_result.get('총점', sum(scores.values()))
 
-            # Evaluation 객체 생성 또는 업데이트
-            evaluation, created = Evaluation.objects.update_or_create(
-                answer=answer,
-                defaults={
-                    'total_score': total_score,
-                    'scores': scores,
-                    'improvements': improvements
-                }
-            )
+#             # Evaluation 객체 생성 또는 업데이트
+#             evaluation, created = Evaluation.objects.update_or_create(
+#                 answer=answer,
+#                 defaults={
+#                     'total_score': total_score,
+#                     'scores': scores,
+#                     'improvements': improvements
+#                 }
+#             )
 
-            return evaluation
+#             return evaluation
 
-    except Exception as e:
-        print(f"Error creating evaluation: {e}")
-        return None
+#     except Exception as e:
+#         print(f"Error creating evaluation: {e}")
+#         return None
 
-
-# 청크 저장 폴더
-TEMP_CHUNKS_DIR = "temp_chunks/"
-
-# 폴더가 없으면 생성
-os.makedirs(TEMP_CHUNKS_DIR, exist_ok=True)
 
 @csrf_exempt
 def upload_chunk(request):
     """ 청크 단위로 오디오 데이터를 서버에 저장하는 뷰 """
-    if request.method == "POST" and request.FILES.get("chunk"):
-        chunk = request.FILES["chunk"]
-        question_id = request.POST.get("questionId")  # 질문 ID를 사용하여 파일 구분
+    # chunk = request.FILES["chunk"]
+    # question_id = request.POST.get("questionId") # 질문 ID를 사용하여 파일 구분
 
+    # # 로컬 chunk 파일 경로 설정 및 저장
+    # os.makedirs("chunk_data/", exist_ok=True)
+    # chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
+
+    # # 청크 데이터를 추가 모드("ab")로 저장
+    # with open(chunk_file_path, "ab") as f:
+    #     f.write(chunk.read())
+    try: # ✅ POST 요청이 아닌 경우 405 오류 반환
+        if request.method != "POST":
+            return JsonResponse({"error": "POST 요청만 허용됩니다."}, status=405)
+
+        # ✅ 파일(chuck)이 요청에 포함되어 있는지 확인
+        chunk = request.FILES.get("chunk")
+        if not chunk:
+            return JsonResponse({"error": "파일(chuck)이 요청에 포함되지 않았습니다."}, status=400)
+
+        # ✅ questionId가 없는 경우 오류 반환
+        question_id = request.POST.get("questionId")
         if not question_id:
-            return JsonResponse({"error": "Missing questionId"}, status=400)
+            return JsonResponse({"error": "questionId가 없습니다."}, status=400)
 
-        # 질문 ID를 기반으로 임시 파일 경로 설정
-        temp_file_path = os.path.join(TEMP_CHUNKS_DIR, f"{question_id}.wav")
+        # ✅ 파일 저장 경로 설정 및 디렉터리 생성
+        os.makedirs("chunk_data/", exist_ok=True)
+        chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
 
-        # 청크 데이터를 추가 모드("ab")로 저장
-        with open(temp_file_path, "ab") as f:
+        # ✅ 청크 데이터를 추가 모드("ab")로 저장
+        with open(chunk_file_path, "ab") as f:
             f.write(chunk.read())
 
-        return JsonResponse({"message": "Chunk received"})
+        # ✅ 정상적으로 저장되었음을 반환
+        return JsonResponse({"status": "success", "message": "청크 저장 완료"})
 
-    return JsonResponse({"error": "Invalid request"}, status=400)
+    except Exception as e:
+        # ✅ 오류 발생 시 500 응답 반환
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 @csrf_exempt
@@ -454,47 +469,101 @@ def finalize_audio(request):
     """ 저장된 청크 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
     if request.method == "POST":
         try:
-            # JSON 요청인지 확인하고 데이터 읽기
-            data = json.loads(request.body.decode("utf-8"))
-            question_id = data.get("questionId")
-        except json.JSONDecodeError:
-            # JSON 형식이 아니면 기존 방식 사용
+            # ✅ FormData에서 데이터 가져오기
             question_id = request.POST.get("questionId")
+            user_id = request.POST.get("userId")
 
-        # 🛠 디버깅: questionId가 올바르게 들어오는지 확인
-        print(f"finalize_audio() 호출됨, questionId: {question_id}")
+            if not question_id or not user_id:
+                return JsonResponse({"error": "questionId 또는 userId가 누락되었습니다."}, status=400)
 
-        if not question_id:
-            print("오류: Missing questionId")
-            return JsonResponse({"error": "Missing questionId"}, status=400)
+            chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
 
-        temp_file_path = os.path.join(TEMP_CHUNKS_DIR, f"{question_id}.wav")
-
-        # 🛠 디버깅: temp_file_path가 존재하는지 확인
-        if not os.path.exists(temp_file_path):
-            print(f"오류: {temp_file_path} 파일이 존재하지 않음")
-            return JsonResponse({"error": "No file found"}, status=400)
-
-        try:
-            # S3 업로드 경로 설정
-            s3_filename = f"audio/{question_id}_recording.wav"
-            print(f"S3 업로드 시작: {temp_file_path} → {s3_filename}")
-
-            s3_url = upload_to_s3(temp_file_path, s3_filename)
+            # ✅ S3 업로드
+            s3_filename = f"{user_id}_{question_id}.wav"
+            s3_url = upload_to_s3(chunk_file_path, s3_filename)
 
             if not s3_url:
-                print("오류: S3 업로드 실패")
-                return JsonResponse({"error": "S3 upload failed"}, status=500)
+                return JsonResponse({"error": "S3 업로드 실패"}, status=500)
 
-            # 로컬 파일 삭제
-            os.remove(temp_file_path)
-            print(f"로컬 파일 삭제 완료: {temp_file_path}")
+            # ✅ 로컬 파일 삭제
+            try:
+                os.remove(chunk_file_path)
+            except Exception as e:
+                print(f"⚠ 로컬 파일 삭제 실패: {e}")
 
-            return JsonResponse({"message": "Upload successful", "s3_url": s3_url})
+            return JsonResponse({"s3_url": s3_url})
 
         except Exception as e:
-            print(f"finalize_audio() 중 오류 발생: {e}")
+            print(f"❌ finalize_audio 오류: {e}")
             return JsonResponse({"error": str(e)}, status=500)
 
-    return JsonResponse({"error": "Invalid request"}, status=400)
+    return JsonResponse({"error": "POST 요청만 허용됩니다."}, status=405)
+
+@csrf_exempt
+def transcribe_audio(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            s3_urls = data.get("s3_urls")
+
+            transcribed_texts = []
+
+            for s3_url in s3_urls:
+                result = audio_to_text(s3_url)
+                transcribed_texts.append(result["transcription"])
+
+            return JsonResponse({
+                "transcriptions": transcribed_texts
+            })
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def save_answers(request):
+    """
+    변환된 텍스트를 Answer 모델에 저장하는 API
+    """
+    if request.method == "POST":
+        try:
+            # ✅ 요청 데이터 확인
+            print("📌 요청 데이터:", request.body.decode("utf-8"))
+
+            data = json.loads(request.body.decode("utf-8"))
+            user_id = data.get("userId")
+            s3_urls = data.get("s3Urls")
+            transactions = data.get("transcriptions")
+
+            # ✅ 질문 데이터 가져오기 (`filter()` 사용)
+            questions = Question.objects.filter(user_id=user_id).order_by("id")
+            print(f"📌 user_id={user_id}의 질문 개수: {len(questions)}개")
+
+            # ✅ 데이터 개수가 맞는지 확인
+            if len(questions) != len(s3_urls):
+                return JsonResponse({"error": "질문의 개수와 답변 개수가 일치하지 않습니다."}, status=400)
+
+            # ✅ 트랜잭션을 사용하여 Answer 저장
+            print("OK!!!!!!")
+            with transaction.atomic():
+                for i in range(10):
+                    s3_url = s3_urls[i]
+                    transcribed_text = transactions[i]
+                    question = questions[i]
+
+                    print(f"✅ 저장 중: {user_id}, 질문: {question.text}, URL: {s3_url}")
+
+                    Answer.objects.create(
+                        user_id=user_id,
+                        question=question,
+                        audio_url=s3_url,
+                        transcribed_text=transcribed_text
+                    )
+
+            print("✅ 답변 저장 완료")
+            return JsonResponse({"message": "✅ 답변 저장 완료!"}, status=200)
+
+        except Exception as e:
+            print(f"❌ 서버 오류 발생: {e}")  # ✅ 오류 로그 출력
+            return JsonResponse({"error": str(e)}, status=500)
+
 

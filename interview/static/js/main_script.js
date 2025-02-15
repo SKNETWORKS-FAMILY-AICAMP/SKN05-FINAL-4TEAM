@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 // 1. 이력서 확인
-                const resumeResponse = await fetch(`/api/check_resume?resume_id=${userId}`);
+                const resumeResponse = await fetch(`/api/check_resume?user_id=${userId}`);
                 const resumeData = await resumeResponse.json();
                 if (!resumeData.resume_exists) {
                     loadingModal.style.display = 'none';
@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCSRFToken(), // CSRF 토큰 추가
                     },
-                    body: JSON.stringify({ user_id:resumeId, jobposting_id: jobId }),
+                    body: JSON.stringify({ user_id:userId, jobposting_id: selectedJobId }),
                 });
 
                 const generateData = await generateResponse.json();
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 3. 질문 생성 완료 확인
                 const checkInterval = setInterval(async () => {
-                    const questionsResponse = await fetch(`/api/check_questions?resume_id=${resume_id}`);
+                    const questionsResponse = await fetch(`/api/check_questions?user_id=${userId}`);
                     const questionsData = await questionsResponse.json();
 
                     if (questionsData.questions && questionsData.questions.length >= 10) {

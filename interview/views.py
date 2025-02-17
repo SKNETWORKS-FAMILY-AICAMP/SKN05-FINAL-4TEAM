@@ -545,7 +545,6 @@ def check_questions(request):
     except ValueError:
         return Response({"error": "resume_id는 정수여야 합니다."}, status=400)
 
-
     questions = Question.objects.filter(resume_id=resume_id).order_by('order')
 
     if questions.exists():
@@ -676,156 +675,36 @@ def process_interview_evaluation(request, resume_id):
 # @csrf_exempt  
 def upload_chunk(request):
     """ 청크 단위로 오디오 데이터를 서버에 저장하는 뷰 """
-    # chunk = request.FILES["chunk"]
-    # question_id = request.POST.get("questionId") # 질문 ID를 사용하여 파일 구분
 
-    # # 로컬 chunk 파일 경로 설정 및 저장
-    # os.makedirs("chunk_data/", exist_ok=True)
-    # chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
-
-    # # 청크 데이터를 추가 모드("ab")로 저장
-    # with open(chunk_file_path, "ab") as f:
-    #     f.write(chunk.read())
-    try: # ✅ POST 요청이 아닌 경우 405 오류 반환
-        if request.method != "POST":
-            return JsonResponse({"error": "POST 요청만 허용됩니다."}, status=405)
-
-        # ✅ 파일(chuck)이 요청에 포함되어 있는지 확인
+    try:        
         chunk = request.FILES.get("chunk")
-        if not chunk:
-            return JsonResponse({"error": "파일(chuck)이 요청에 포함되지 않았습니다."}, status=400)
-
-        # ✅ questionId가 없는 경우 오류 반환
         question_id = request.POST.get("questionId")
-        if not question_id:
-            return JsonResponse({"error": "questionId가 없습니다."}, status=400)
 
-        # ✅ 파일 저장 경로 설정 및 디렉터리 생성
         os.makedirs("chunk_data/", exist_ok=True)
         chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
 
-        # ✅ 청크 데이터를 추가 모드("ab")로 저장
         with open(chunk_file_path, "ab") as f:
             f.write(chunk.read())
 
-        # ✅ 정상적으로 저장되었음을 반환
         return JsonResponse({"status": "success", "message": "청크 저장 완료"})
 
     except Exception as e:
-        # ✅ 오류 발생 시 500 응답 반환
         return JsonResponse({"error": str(e)}, status=500)
 
-# @csrf_exempt
+
 def finalize_audio(request):
-    """ 저장된 청크 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
-    if request.method == "POST":
-        try:
-            # 디버깅을 위한 로그 추가
-            print("Received POST data:", request.POST)
-            print("Received FILES:", request.FILES)
-            
-            # ✅ FormData에서 데이터 가져오기
-            question_id = request.POST.get("questionId")
-            resume_id = request.POST.get("resumeId")
+    """ 저장된 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
+    
+    try:
+        question_id = request.POST.get("questionId")
+        resume_id = request.POST.get("resumeId")
+        chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
+        s3_filename = f"{resume_id}_{question_id}.wav"
+        s3_url = upload_to_s3(chunk_file_path, s3_filename)
 
-            if not question_id or not resume_id:
-                return JsonResponse({"error": "questionId 또는 resumeId 누락되었습니다."}, status=400)
-
-            chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
-
-            # ✅ S3 업로드
-            s3_filename = f"{resume_id}_{question_id}.wav" 
-            s3_url = upload_to_s3(chunk_file_path, s3_filename)
-
-            if not s3_url:
-                return JsonResponse({"error": "S3 업로드 실패"}, status=500)
-
-            # ✅ 로컬 파일 삭제
-            try:
-                os.remove(chunk_file_path)
-            except Exception as e:
-                print(f"⚠ 로컬 파일 삭제 실패: {e}")
-
-            return JsonResponse({"s3_url": s3_url})
-
-        except Exception as e:
-            print(f"❌ finalize_audio 오류: {e}")
-            return JsonResponse({"error": str(e)}, status=500)
-
-    return JsonResponse({"error": "POST 요청만 허용됩니다."}, status=405)
-
-# @csrf_exempt
-def transcribe_audio(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            s3_urls = data.get("s3_urls")
-
-            transcribed_texts = []
-
-            for s3_url in s3_urls:
-                result = audio_to_text(s3_url)
-                transcribed_texts.append(result["transcription"])
-
-            return JsonResponse({
-                "transcriptions": transcribed_texts
-            })
-
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
-
-# @csrf_exempt
-def save_answers(request):
-    """
-    변환된 텍스트를 Answer 모델에 저장하는 API
-    """
-    if request.method == "POST":
-        try:
-            # ✅ 요청 데이터 확인
-            print("📌 요청 데이터:", request.body.decode("utf-8"))
-
-            data = json.loads(request.body.decode("utf-8"))
-            resume_id = data.get("resume_id")
-            s3_urls = data.get("s3Urls")
-            transactions = data.get("transcriptions")
-
-            # ✅ 질문 데이터 가져오기
-            questions = Question.objects.filter(resume_id=resume_id).order_by("id")
-            print(f"📌 resume_id={resume_id}의 질문 개수: {len(questions)}개")
-
-            # ✅ 데이터 개수가 맞는지 확인
-            if len(questions) != len(s3_urls):
-                return JsonResponse({"error": "질문의 개수와 답변 개수가 일치하지 않습니다."}, status=400)
-
-            # ✅ 트랜잭션을 사용하여 Answer 저장
-            print("OK!!!!!!")
-            with transaction.atomic():
-                for i in range(10):
-                    s3_url = s3_urls[i]
-                    original_text = transactions[i]
-                    question = questions[i]
-
-                    print(f"✅ 저장 중: {resume_id}, 질문: {question.text}, URL: {s3_url}")
-
-                    # 요약을 위한 텍스트 보정 후 요약
-                    corrected_result = correct_transcription(original_text)
-                    corrected_text = corrected_result.get("보정된 텍스트", original_text)
-                    summary_result = summarize_answer(corrected_text)
-                    summarized_text = summary_result.get("요약", corrected_text)
-
-                    Answer.objects.create(
-                        resume_id=resume_id,
-                        question=question,
-                        audio_url=s3_url,
-                        transcribed_text=original_text,    # 원본 텍스트 저장
-                        summarized_text=summarized_text    # 요약된 텍스트 저장
-                    )
-
-            print("✅ 답변 저장 완료")
-            return JsonResponse({"message": "✅ 답변 저장 완료!"}, status=200)
-
-        except Exception as e:
-            print(f"❌ 서버 오류 발생: {e}")
-            return JsonResponse({"error": str(e)}, status=500)
-
-
+        os.remove(chunk_file_path)
+        return JsonResponse({"s3_url": s3_url})
+    
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+    

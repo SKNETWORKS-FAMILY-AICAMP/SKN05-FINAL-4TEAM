@@ -115,13 +115,14 @@ else:
 
 # 정적 파일 및 업로드 파일을 s3에 저장할 때
 if DEBUG:
-    # 개발 환경: 로컬 저장소
+    # 개발 환경 (로컬 저장)
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
     STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 else:
-    # 배포 환경: S3 
+    # 배포 환경 (업로드 파일만 S3에 저장)
     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
+    STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+
 
 AWS_QUERYSTRING_AUTH = False # 인증쿼리 스트링 제거
 
@@ -169,7 +170,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 RUNPOD_API_KEY = config("RUNPOD_API_KEY", default="")
 STT_ENDPOINT = config("STT_endpoint", default="")
 
-# rest framework에서 API 응답을 JSON 형식으로만 반환
+
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',

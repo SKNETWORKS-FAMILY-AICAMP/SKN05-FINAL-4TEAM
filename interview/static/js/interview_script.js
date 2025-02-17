@@ -12,9 +12,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const startButton = document.getElementById("startRecording");
     const stopButton = document.getElementById("stopRecording");
 
-    const questionIdInput = document.getElementById("questionId");  // 현재 질문의 ID
-    const userIdInput = document.getElementById("userId");            // user_id
-    const totalQuestionsInput = document.getElementById("totalQuestions");  // 총 질문 수
+    const questionIdInput = document.getElementById("questionId");
+    const resumeIdInput = document.getElementById("resumeId");
+    const totalQuestionsInput = document.getElementById("totalQuestions");
 
     let questions = [];
     let currentQuestionIndex = 0;
@@ -108,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function startRecording() {
-        userId = userIdInput.value;
+        const resumeId = resumeIdInput.value;
         try {
             currentQuestionId = questionIdInput.value;
     
@@ -130,7 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // mediaRecorder.onstop = async () => {
             //     console.log("📢 onstop 실행됨: finalizeAudio() 호출");
-            //     await finalizeAudio(currentQuestionId, userId);
+            //     await finalizeAudio(currentQuestionId, resumeId);
             // };
             
             // 🔹 1초마다 데이터 청크 생성 후 서버 전송
@@ -147,10 +147,10 @@ document.addEventListener("DOMContentLoaded", () => {
     async function stopRecording() {
         if (mediaRecorder && isRecording) {
             currentQuestionId = questionIdInput.value;
-            userId = userIdInput.value;
+            const resumeId = resumeIdInput.value;
             mediaRecorder.stop();
             isRecording = false;
-            await finalizeAudio(currentQuestionId, userId); //
+            await finalizeAudio(currentQuestionId, resumeId);
 
             // 마이크 스트림 정리
             if (stream) {
@@ -179,14 +179,17 @@ document.addEventListener("DOMContentLoaded", () => {
     
 
     // 서버에서 모든 청크를 합쳐 S3로 업로드 요청
-    async function finalizeAudio(questionId, userId) {
+    async function finalizeAudio(questionId, resumeId) {
         try {
             let formData = new FormData();
             formData.append("questionId", questionId);
-            formData.append("userId", userId);
+            formData.append("resumeId", resumeId);
     
             const response = await fetch("/finalize_audio/", {
                 method: "POST",
+                headers: {
+                    'X-CSRFToken': getCSRFToken(),  // CSRF 토큰 추가
+                },
                 body: formData
             });
     
@@ -256,16 +259,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
 
-    async function saveAnswers(userId) {
+    async function saveAnswers(resumeId) {
         try {
             if (transcriptions.length === 0) {
                 console.warn("⚠ 변환된 데이터가 없습니다. 저장하지 않습니다.");
                 return;
             }
-            console.log(userId, s3Urls, transcriptions)
+            console.log(resumeId, s3Urls, transcriptions)
             const response = await fetch("/save_answers/", {
                 method: "POST",
-                body: JSON.stringify({ userId, s3Urls, transcriptions }),  // ✅ 변환된 데이터 전송
+                body: JSON.stringify({ resumeId, s3Urls, transcriptions }),
                 headers: { "Content-Type": "application/json" }
             });
     
@@ -276,64 +279,61 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function generateReport() {
-        reportBtn.style.display = "none";
-        reportButton.style.display = "inline-block";
-
+    function viewReport() {
         try {
-            const response = await fetch("/api/generate-report/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken(),
-                },
-                body: JSON.stringify({ user_id: userIdInput.value }),
-            });
+            // 모달의 버튼을 로딩 상태로 변경
+            const originalText = this.textContent;
+            this.disabled = true;
+            this.innerHTML = `
+                <span>AI 리포트 생성 중...</span>
+                <div class="spinner"></div>
+            `;
 
-            if (!response.ok) {
-                throw new Error("리포트 생성 실패");
-            }
+            const resumeId = document.getElementById('resumeIdInput').value;
+            
+            // 리포트 페이지로 직접 이동 (평가 프로세스 호출 없이)
+            window.location.href = `/interview-report/${resumeId}/`;
 
-            const data = await response.json();
-            if (data.report_url) {
-                window.location.href = data.report_url;
-            } else {
-                throw new Error("리포트 URL이 없음");
-            }
         } catch (error) {
-            console.error("리포트 생성 중 오류:", error);
-            buttonText.textContent = "리포트 생성 실패";
-            loadingSpinner.style.display = "none";
+            console.error('Error:', error);
+            alert('리포트 생성 중 오류가 발생했습니다.');
+            this.disabled = false;
+            this.innerHTML = originalText;
         }
     }
-    reportBtn.addEventListener("click", generateReport);
+    reportBtn.addEventListener("click", viewReport);
 
     // AJAX를 이용해 다음 질문을 서버에서 가져오는 함수
     function nextQuestion() {
-        const userId = userIdInput.value;
+        const resumeId = resumeIdInput.value;
         const currentQuestionId = questionIdInput.value;
+        
+        console.log("다음 질문 요청:", resumeId, currentQuestionId);
 
         // 서버에 POST 요청으로 다음 질문 가져오기
-        fetch(`/next_question/${userId}/`, {
+        fetch(`/next_question/${resumeId}/`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
-                'X-CSRFToken': getCSRFToken(), // CSRF 토큰 추가
+                'X-CSRFToken': getCSRFToken(),
             },
             body: `question_id=${currentQuestionId}`,
         })
         .then((response) => response.json())
         .then((data) => {
-            if (data.error) {
-                // 더 이상 질문이 없는 경우 인터뷰 종료 처리
+            console.log("받은 데이터:", data);
+            
+            if (data.error || data.status === 'complete') {
+                console.log("질문 없음 - 인터뷰 종료");
                 completeInterview();
             } else {
+                console.log("다음 질문 표시:", data.question);
                 // 다음 질문을 화면에 표시
                 questionTextElement.textContent = data.question;
                 questionIdInput.value = data.question_id;
                 currentQuestionIndex++;
-                updateQuestionNumber(); // 질문 번호 UI 업데이트
-                timeLeft = 90; // 타이머 초기화
+                updateQuestionNumber();
+                timeLeft = 90;
                 updateTimerDisplay();
 
                 // 버튼 상태 초기화
@@ -364,13 +364,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 
-    // CSRF 토큰 가져오는 함수
+    // CSRF 토큰을 가져오는 함수 (이미 있다면 재사용)
     function getCSRFToken() {
-        const cookieValue = document.cookie
-            .split("; ")
-            .find(row => row.startsWith("csrftoken="))
-            ?.split("=")[1];
-        return cookieValue || "";
+        const csrfInput = document.getElementById('csrf_token');
+        return csrfInput ? csrfInput.value : '';
     }
 
     // 면접 중간메인페이지로 이동하기
@@ -386,4 +383,54 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     startTotalTimer(); // 총 타이머 시작
+
+    // 리포트 버튼에 이벤트 리스너 추가
+    const reportButtonModal = document.querySelector('.report-button');
+    if (reportButtonModal) {
+        reportButtonModal.addEventListener('click', function() {
+            try {
+                // 모달의 버튼을 로딩 상태로 변경
+                const originalText = this.textContent;
+                this.disabled = true;
+                this.innerHTML = `
+                    <span>AI 리포트 생성 중...</span>
+                    <div class="spinner"></div>
+                `;
+
+                const resumeId = document.getElementById('resumeIdInput').value;
+                
+                // 평가 프로세스 API 호출
+                fetch(`/api/process-interview-evaluation/${resumeId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('서버 응답 오류');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // URL 패턴 수정 (올바른 URL로 리다이렉트)
+                    window.location.href = `/interview-report/${resumeId}/`;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('리포트 생성 중 오류가 발생했습니다.');
+                    // 에러 시 버튼 복구
+                    this.disabled = false;
+                    this.innerHTML = originalText;
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('리포트 생성 중 오류가 발생했습니다.');
+                this.disabled = false;
+                this.innerHTML = originalText;
+            }
+        });
+    }
 });

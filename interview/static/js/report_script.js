@@ -1,3 +1,7 @@
+// 평가 카테고리 상수 정의
+const GENERAL_CATEGORIES = ['질문 이해도', '논리적 전개', '내용의 구체성', '문제 해결 접근', '조직 적합도'];
+const NONVERBAL_CATEGORIES = ['말 더듬', '말하기 속도', '발음 정확도'];
+
 // PDF 다운로드 함수를 전역 스코프에 정의
 window.downloadPDF = function() {
     console.log('1. PDF 다운로드 함수 시작'); // 디버깅 로그 1
@@ -243,15 +247,22 @@ const feedbackData = {
     // 다른 평가 지표들에 대한 피드백도 추가 가능
 };
 
-// 평균 점수 계산 및 총괄 평가 업데이트 함수
+// 섹션 피드백 업데이트 함수
 function updateOverallEvaluation(questions) {
-    // 평가 지표별 평균 점수 계산
+    // 일반 평가 지표별 평균 점수 계산
     const totalScores = {
         '질문 이해도': 0,
         '논리적 전개': 0,
         '내용의 구체성': 0,
         '문제 해결 접근': 0,
         '조직 적합도': 0
+    };
+    
+    // 비언어적 요소 점수 계산을 위한 별도 객체
+    const nonverbalScores = {
+        '말 더듬': 0,
+        '말하기 속도': 0,
+        '발음 정확도': 0
     };
     
     let questionCount = 0;
@@ -263,6 +274,13 @@ function updateOverallEvaluation(questions) {
             totalScores['내용의 구체성'] += item.evaluation.scores.content_specificity || 0;
             totalScores['문제 해결 접근'] += item.evaluation.scores.problem_solving || 0;
             totalScores['조직 적합도'] += item.evaluation.scores.organizational_fit || 0;
+            
+            // 비언어적 요소 점수 별도 처리
+            if (item.evaluation.nonverbal_scores) {
+                nonverbalScores['말 더듬'] += item.evaluation.nonverbal_scores.stuttering || 0;
+                nonverbalScores['말하기 속도'] += item.evaluation.nonverbal_scores.speaking_speed || 0;
+                nonverbalScores['발음 정확도'] += item.evaluation.nonverbal_scores.pronunciation || 0;
+            }
             questionCount++;
         }
     });
@@ -274,7 +292,74 @@ function updateOverallEvaluation(questions) {
             Math.round((totalScores[key] / questionCount) * 10) / 10 : 0;
     });
 
-    // 막대 그래프 생성
+    const averageNonverbalScores = {};
+    Object.keys(nonverbalScores).forEach(key => {
+        averageNonverbalScores[key] = questionCount > 0 ? 
+            Math.round((nonverbalScores[key] / questionCount) * 10) / 10 : 0;
+    });
+
+    // 그래프 생성
+    createBarCharts(averageScores, averageNonverbalScores);
+
+    // 일반 평가 지표의 강점과 약점 찾기
+    const generalScores = findMaxMinScores(averageScores, GENERAL_CATEGORIES);
+    
+    // 비언어적 요소의 강점과 약점 찾기
+    const nonverbalResults = findMaxMinScores(averageNonverbalScores, NONVERBAL_CATEGORIES);
+
+    // 일반 평가 지표 피드백 업데이트 (메인 섹션)
+    updateSectionFeedback('.general-evaluation .best-score', generalScores.maxCategory, generalScores.maxScore, 'best');
+    updateSectionFeedback('.general-evaluation .worst-score', generalScores.minCategory, generalScores.minScore, 'worst');
+
+    // 비언어적 요소 피드백 업데이트 (분석 섹션)
+    updateSectionFeedback('.nonverbal-evaluation .best-score', nonverbalResults.maxCategory, nonverbalResults.maxScore, 'best');
+    updateSectionFeedback('.nonverbal-evaluation .worst-score', nonverbalResults.minCategory, nonverbalResults.minScore, 'worst');
+}
+
+// 최대/최소 점수 찾기 헬퍼 함수
+function findMaxMinScores(scores) {
+    let maxScore = -1;
+    let minScore = Infinity;
+    let maxCategory = '';
+    let minCategory = '';
+    
+    Object.entries(scores).forEach(([category, score]) => {
+        if (score > maxScore) {
+            maxScore = score;
+            maxCategory = category;
+        }
+        if (score < minScore) {
+            minScore = score;
+            minCategory = category;
+        }
+    });
+
+    return { maxCategory, maxScore, minCategory, minScore };
+}
+
+// 섹션 피드백 업데이트 헬퍼 함수
+function updateSectionFeedback(selector, category, score, type) {
+    const section = document.querySelector(selector);
+    if (section) {
+        const scoreItem = section.querySelector('.score-item');
+        scoreItem.querySelector('.score-label').textContent = category;
+        scoreItem.querySelector('.score-fill').style.width = `${score * 10}%`;
+        scoreItem.querySelector('.score-value').textContent = `${score}/10`;
+
+        const feedbackDiv = section.querySelector('.score-feedback');
+        const feedback = feedbackData[category]?.[type];
+        if (feedback) {
+            feedbackDiv.innerHTML = `
+                ${feedback.points.map(point => `<p>${type === 'best' ? '✓' : '✗'} ${point}</p>`).join('')}
+                <p class="improvement">💡 ${feedback.improvement}</p>
+            `;
+        }
+    }
+}
+
+// 그래프 생성 함수
+function createBarCharts(averageScores, averageNonverbalScores) {
+    // 일반 평가 지표 막대 그래프
     const ctx = document.getElementById('evaluationBarChart');
     if (ctx) {
         new Chart(ctx, {
@@ -300,58 +385,207 @@ function updateOverallEvaluation(questions) {
         });
     }
 
-    // 강점과 약점 찾기
-    let maxScore = -1;
-    let minScore = Infinity;
-    let maxCategory = '';
-    let minCategory = '';
+    // 비언어적 요소 막대 그래프
+    const nonverbalCtx = document.getElementById('nonverbalBarChart');
+    if (nonverbalCtx) {
+        new Chart(nonverbalCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(averageNonverbalScores),
+                datasets: [{
+                    data: Object.values(averageNonverbalScores),
+                    backgroundColor: '#003366'
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 10
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+}
+
+// 차트 공통 스타일 정의
+const chartStyle = {
+    borderColor: 'rgba(75, 192, 192, 1)',
+    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+    borderWidth: 2,
+    tension: 0.4
+};
+
+const commonOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+        legend: { display: false }
+    }
+};
+
+function createGaugeCharts(questions) {
+    console.log('Creating gauge charts with questions:', questions);
     
-    Object.entries(averageScores).forEach(([category, score]) => {
-        if (score > maxScore) {
-            maxScore = score;
-            maxCategory = category;
-        }
-        if (score < minScore) {
-            minScore = score;
-            minCategory = category;
+    // 비언어 점수 수집
+    const nonverbalScores = {
+        stutterScores: [],
+        speedScores: [],
+        pronunciationScores: [],
+        actualSpeedScores: []
+    };
+
+    // 각 질문의 비언어 점수 수집
+    questions.forEach((item, index) => {
+        console.log(`Checking nonverbal scores for Q${index + 1}:`, item.evaluation?.nonverbal_scores);  // 각 질문의 비언어 점수 로그
+        if (item.evaluation?.nonverbal_scores) {
+            nonverbalScores.stutterScores.push(item.evaluation.nonverbal_scores.stuttering);
+            nonverbalScores.speedScores.push(item.evaluation.nonverbal_scores.speaking_speed);
+            nonverbalScores.pronunciationScores.push(item.evaluation.nonverbal_scores.pronunciation);
+            nonverbalScores.actualSpeedScores.push(item.evaluation.nonverbal_scores.actual_speed);
         }
     });
 
-    // 강점 피드백 업데이트
-    const bestScoreSection = document.querySelector('.best-score');
-    if (bestScoreSection) {
-        const scoreItem = bestScoreSection.querySelector('.score-item');
-        scoreItem.querySelector('.score-label').textContent = maxCategory;
-        scoreItem.querySelector('.score-fill').style.width = `${maxScore * 10}%`;
-        scoreItem.querySelector('.score-value').textContent = `${maxScore}/10`;
+    console.log('Collected nonverbal scores:', nonverbalScores);  // 수집된 점수 로그
 
-        const feedbackDiv = bestScoreSection.querySelector('.score-feedback');
-        const bestFeedback = feedbackData[maxCategory]?.best;
-        if (bestFeedback) {
-            feedbackDiv.innerHTML = `
-                ${bestFeedback.points.map(point => `<p>✓ ${point}</p>`).join('')}
-                <p class="improvement">💡 ${bestFeedback.improvement}</p>
-            `;
+    // 데이터가 있는지 확인
+    if (Object.values(nonverbalScores).every(arr => arr.length === 0)) {
+        console.log('No nonverbal scores available');
+        return;
+    }
+    
+    // 라벨 생성 (질문 수에 맞게)
+    const labels = nonverbalScores.stutterScores.map((_, idx) => `Q${idx + 1}`);
+
+    // 말 더듬 차트 (데이터가 있는 경우에만)
+    if (nonverbalScores.stutterScores.length > 0) {
+        const stutterCtx = document.getElementById('stutter-gauge');
+        if (stutterCtx) {
+            new Chart(stutterCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '말 더듬 (점수)',
+                        data: nonverbalScores.stutterScores,
+                        ...chartStyle
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 10,
+                            ticks: {
+                                callback: value => value + '점'
+                            }
+                        }
+                    }
+                }
+            });
         }
     }
 
-    // 약점 피드백 업데이트
-    const worstScoreSection = document.querySelector('.worst-score');
-    if (worstScoreSection) {
-        const scoreItem = worstScoreSection.querySelector('.score-item');
-        scoreItem.querySelector('.score-label').textContent = minCategory;
-        scoreItem.querySelector('.score-fill').style.width = `${minScore * 10}%`;
-        scoreItem.querySelector('.score-value').textContent = `${minScore}/10`;
-
-        const feedbackDiv = worstScoreSection.querySelector('.score-feedback');
-        const worstFeedback = feedbackData[minCategory]?.worst;
-        if (worstFeedback) {
-            feedbackDiv.innerHTML = `
-                ${worstFeedback.points.map(point => `<p>✗ ${point}</p>`).join('')}
-                <p class="improvement">💡 ${worstFeedback.improvement}</p>
-            `;
+    // 말하기 속도 점수 차트 (데이터가 있는 경우에만)
+    if (nonverbalScores.speedScores.length > 0) {
+        const speedCtx = document.getElementById('speed-score-gauge');
+        if (speedCtx) {
+            new Chart(speedCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '말하기 속도 (점수)',
+                        data: nonverbalScores.speedScores,
+                        ...chartStyle
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 10,
+                            ticks: {
+                                callback: value => value + '점'
+                            }
+                        }
+                    }
+                }
+            });
         }
     }
+
+    // 실제 말하기 속도 차트 (데이터가 있는 경우에만)
+    if (nonverbalScores.actualSpeedScores.length > 0) {
+        const actualSpeedCtx = document.getElementById('actual-speed-gauge');
+        if (actualSpeedCtx) {
+            new Chart(actualSpeedCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '실제 말하기 속도 (음절/분)',
+                        data: nonverbalScores.actualSpeedScores,
+                        ...chartStyle
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 400,
+                            ticks: {
+                                callback: value => value + ' 음절/분'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // 발음 정확도 차트 (데이터가 있는 경우에만)
+    if (nonverbalScores.pronunciationScores.length > 0) {
+        const accuracyCtx = document.getElementById('accuracy-gauge');
+        if (accuracyCtx) {
+            new Chart(accuracyCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '발음 정확도 (점수)',
+                        data: nonverbalScores.pronunciationScores,
+                        ...chartStyle
+                    }]
+                },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 100,
+                            ticks: {
+                                callback: value => value + '점'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+}
+
+// 평균 계산 함수
+function calculateAverage(arr) {
+    if (!arr.length) return 0;
+    return arr.reduce((sum, val) => sum + val, 0) / arr.length;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -361,10 +595,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // URL에서 user_id 추출
         const pathParts = window.location.pathname.split('/');
-        const userId = pathParts[pathParts.length - 2];
+        const resumeId = pathParts[pathParts.length - 2];
 
         // API 호출
-        const response = await fetch(`/api/interview-report/${userId}/`);
+        const response = await fetch(`/api/interview-report/${resumeId}/`);
         if (!response.ok) {
             throw new Error('Failed to fetch interview data');
         }
@@ -389,7 +623,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div class="answer-box">
                         <p class="answer-label">답변 내용</p>
-                        <p class="answer-content">${item.answer?.transcribed_text || '답변 없음'}</p>
+                        <p class="answer-content">${item.answer?.summarized_text || '답변 없음'}</p> 
                     </div>
                     <div class="analysis-container" style="display: flex; gap: 20px;">
                         <div class="metrics-section" style="flex: 1;">
@@ -453,8 +687,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('다운로드 버튼을 찾을 수 없음');
         }
 
+        // 비언어적 평가 차트 생성 (updateOverallEvaluation 전에 호출)
+        createGaugeCharts(questions);
+        
         // 총괄 평가 업데이트
-        updateOverallEvaluation(result.data.questions);
+        updateOverallEvaluation(questions);
 
     } catch (error) {
         console.error('Error:', error);
@@ -462,7 +699,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         container.innerHTML = `<div class="error-message">데이터를 불러오는데 실패했습니다: ${error.message}</div>`;
     }
 });
-
 // 레이더 차트 생성 함수
 function createRadarChart(questionId, scores) {
     const ctx = document.getElementById(questionId);
@@ -607,3 +843,38 @@ function getCurrentDate() {
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}${month}${day}`;
 }
+
+// 최고 점수 찾기
+function findBestScore(scores) {
+    const items = [
+        { label: '말 더듬', value: scores.stuttering },
+        { label: '말하기 속도', value: scores.speaking_speed },
+        { label: '발음 정확도', value: scores.pronunciation / 10 }
+    ];
+    return items.reduce((max, item) => max.value > item.value ? max : item);
+}
+
+// 최저 점수 찾기
+function findWorstScore(scores) {
+    const items = [
+        { label: '말 더듬', value: scores.stuttering },
+        { label: '말하기 속도', value: scores.speaking_speed },
+        { label: '발음 정확도', value: scores.pronunciation / 10 }
+    ];
+    return items.reduce((min, item) => min.value < item.value ? min : item);
+}
+
+// 점수 섹션 업데이트
+function updateScoreSection(selector, score) {
+    const section = document.querySelector(`.nonverbal-evaluation ${selector}`);
+    if (!section) return;
+    
+    const label = section.querySelector('.score-label');
+    const value = section.querySelector('.score-value');
+    const fill = section.querySelector('.score-fill');
+    
+    if (label) label.textContent = score.label;
+    if (value) value.textContent = score.value.toFixed(1);
+    if (fill) fill.style.width = `${score.value * 10}%`;
+}
+

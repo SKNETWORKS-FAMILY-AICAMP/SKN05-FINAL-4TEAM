@@ -595,10 +595,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // URL에서 user_id 추출
         const pathParts = window.location.pathname.split('/');
-        const resumeId = pathParts[pathParts.length - 2];
+        const resume_id = 1;
 
         // API 호출
-        const response = await fetch(`/api/interview-report/${resumeId}/`);
+        const response = await fetch(`/api/interview-report/1/`);
         if (!response.ok) {
             throw new Error('Failed to fetch interview data');
         }
@@ -623,7 +623,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div class="answer-box">
                         <p class="answer-label">답변 내용</p>
-                        <p class="answer-content">${item.answer?.summarized_text || '답변 없음'}</p> 
+                        <p class="answer-content">${item.answer?.transcribed_text || '답변 없음'}</p> 
                     </div>
                     <div class="analysis-container" style="display: flex; gap: 20px;">
                         <div class="metrics-section" style="flex: 1;">

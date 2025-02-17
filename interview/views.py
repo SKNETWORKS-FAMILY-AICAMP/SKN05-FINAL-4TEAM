@@ -802,23 +802,23 @@ def save_answers(request):
             with transaction.atomic():
                 for i in range(10):
                     s3_url = s3_urls[i]
-                    original_text = transactions[i]
+                    original_text = transactions[0][i]
                     question = questions[i]
 
                     print(f"✅ 저장 중: {resume_id}, 질문: {question.text}, URL: {s3_url}")
 
                     # 요약을 위한 텍스트 보정 후 요약
-                    corrected_result = correct_transcription(original_text)
-                    corrected_text = corrected_result.get("보정된 텍스트", original_text)
-                    summary_result = summarize_answer(corrected_text)
-                    summarized_text = summary_result.get("요약", corrected_text)
+                    # corrected_result = correct_transcription(original_text)
+                    # corrected_text = corrected_result.get("보정된 텍스트", original_text)
+                    # summary_result = summarize_answer(corrected_text)
+                    # summarized_text = summary_result.get("요약", corrected_text)
 
                     Answer.objects.create(
                         resume_id=resume_id,
                         question=question,
                         audio_url=s3_url,
                         transcribed_text=original_text,    # 원본 텍스트 저장
-                        summarized_text=summarized_text    # 요약된 텍스트 저장
+                        # summarized_text=summarized_text    # 요약된 텍스트 저장
                     )
 
             print("✅ 답변 저장 완료")

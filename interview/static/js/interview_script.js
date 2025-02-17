@@ -242,24 +242,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" }
             });
     
-            if (!response.ok) {
-                throw new Error(`HTTP 오류: ${response.status}`);
-            }
-    
             const result = await response.json();
     
-            transcriptions = result.transcriptions || [];
+            transcriptions.push(result.transcriptions);
             return transcriptions;
     
         } catch (error) {
             console.error("❌ transcribeAll() 실패:", error);
-            transcriptions = [];
-            return [];
         }
     }
     
 
-    async function saveAnswers(resumeId) {
+    async function saveAnswers(resume_id) {
         try {
             if (transcriptions.length === 0) {
                 console.warn("⚠ 변환된 데이터가 없습니다. 저장하지 않습니다.");
@@ -268,7 +262,7 @@ document.addEventListener("DOMContentLoaded", () => {
             console.log(resumeId, s3Urls, transcriptions)
             const response = await fetch("/save_answers/", {
                 method: "POST",
-                body: JSON.stringify({ resumeId, s3Urls, transcriptions }),
+                body: JSON.stringify({ resume_id, s3Urls, transcriptions }),
                 headers: { "Content-Type": "application/json" }
             });
     
@@ -359,7 +353,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const totalSeconds = totalTimeElapsed % 60;
         document.getElementById("modalTotalTime").textContent = `${totalMinutes}분 ${totalSeconds}초`;
         document.getElementById("completionModal").style.display = "block";
-
+        
         reportBtn.disabled = false;
     }
 
@@ -387,7 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 리포트 버튼에 이벤트 리스너 추가
     const reportButtonModal = document.querySelector('.report-button');
     if (reportButtonModal) {
-        reportButtonModal.addEventListener('click', function() {
+        reportButtonModal.addEventListener('click', async () => {
             try {
                 // 모달의 버튼을 로딩 상태로 변경
                 const originalText = this.textContent;
@@ -397,10 +391,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="spinner"></div>
                 `;
 
-                const resumeId = document.getElementById('resumeIdInput').value;
+                const resume_id = resumeIdInput.value;
+                await transcribeAll();
+                await saveAnswers(resume_id);
                 
                 // 평가 프로세스 API 호출
-                fetch(`/api/process-interview-evaluation/${resumeId}/`, {
+                fetch(`/api/process-interview-evaluation/${resume_id}/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

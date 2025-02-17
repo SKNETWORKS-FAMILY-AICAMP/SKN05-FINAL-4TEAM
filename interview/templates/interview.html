@@ -30,9 +30,9 @@
             <p id="questionText">{{ question }}</p>
         </div>
 
-        <!-- 서버에서 전달받은 user_id와 question_id를 숨겨진 input에 저장 -->
+        <!-- 서버에서 전달받은 resume_id를 숨겨진 input에 저장 -->
         <input type="hidden" id="questionId" value="{{ question_id }}">
-        <input type="hidden" id="userId" value="{{ user_id }}">
+        <input type="hidden" id="resumeId" value="{{ resume_id }}">
         <input type="hidden" id="totalQuestions" value="{{ total_questions }}">
         
         <!-- 면접관과 타이머 섹션 -->
@@ -73,7 +73,7 @@
             <!-- 리포트 생성 버튼 -->
             <button
                 id="reportBtn"
-                data-url="{% url 'interview_report' user_id=user_id %}"
+                data-url="{% url 'interview_report' resume_id=resume_id %}"
                 >
                 AI 리포트 보러가기</button>
         <!-- 로딩 버튼 (리포트 생성 중 표시) -->
@@ -94,13 +94,13 @@
             <h3>면접이 종료되었습니다</h3>
             <p>총 면접 시간: <span id="modalTotalTime">00분 00초</span></p>
             <div class="modal-buttons">
-                <button class="report-button" onclick="viewReport()">AI 리포트 확인하기</button>
+                <button class="report-button">AI 리포트 확인하기</button>
             </div>
         </div>
     </div>
 
     <!-- 숨겨진 입력필드 추가 -->
-    <input type="hidden" id="userIdInput" value="{{ user_id }}">
+    <input type="hidden" id="resumeIdInput" value="{{ resume_id }}">
     <input type="hidden" id="questionIdInput" value="{{ question_id }}">
     
     <script>

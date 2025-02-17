@@ -57,9 +57,8 @@ def resume_form(request):
 
 # 리포트 생성을 위한 데이터 가져오기 API
 @api_view(['GET'])
-def get_interview_report(request, user_id):
+def get_interview_report(request, resume_id):
     try:
-        resume_id = user_id  # user_id를 resume_id로 사용
         questions = Question.objects.filter(resume_id=resume_id).order_by('order')
         questions_data = []
 
@@ -136,7 +135,7 @@ def evaluate_answer_view(request):
         job_posting = question.job_posting
         if job_posting is None:
             # 해당 question의 resume_id로 Resume를 찾고, 거기서 job_posting 정보를 가져옴
-            resume = Resume.objects.filter(id=question.resume_id).first()  # user_id를 resume_id로 변경
+            resume = Resume.objects.filter(id=question.resume_id).first()
             if resume and resume.job_posting:
                 job_posting = resume.job_posting
                 print(f"Found job posting from resume: {job_posting.company_name}")
@@ -224,13 +223,11 @@ def evaluate_answer_view(request):
 
 
 # 결과 리포트 페이지 
-def interview_report(request, user_id):
+def interview_report(request, resume_id):
     """
     면접 리포트 페이지를 렌더링하고 자동으로 평가 프로세스를 시작합니다.
     """
     try:
-        resume_id = user_id  # user_id를 resume_id로 사용
-        
         # 기본 정보 가져오기
         resume = get_object_or_404(Resume, id=resume_id)
         
@@ -256,8 +253,7 @@ def interview_report(request, user_id):
         
         context = {
             'candidate_name': resume.name,
-            'user_id': resume_id,  
-            'resume_id': resume_id 
+            'resume_id': resume_id,  
         }
         
         return render(request, 'report.html', context)
@@ -401,7 +397,7 @@ def generate_questions_from_resume(resume_id, jobposting_id):
 def generate_questions(request):
     """질문 생성하는 API 엔드 포인트"""
     try:
-        resume_id = request.data.get('user_id')
+        resume_id = request.data.get('resume_id')
         job_id = request.data.get('jobposting_id')
         
         if not resume_id or not job_id:
@@ -447,7 +443,6 @@ def interview_page(request, resume_id):
         context = {
             'questions': questions,
             'resume_id': resume_id,
-            'user_id': resume_id,
             'total_questions': questions.count(),
             'question': first_question.text,  # 첫 질문 텍스트
             'question_id': first_question.id  # 첫 질문 ID
@@ -460,13 +455,12 @@ def interview_page(request, resume_id):
 
 
 # 다음 질문 API
-def next_question(request, user_id):  
+def next_question(request, resume_id):  
     """
     녹음 종료 후 다음 질문을 가져오는 API
     """
     if request.method == "POST":
         current_question_id = request.POST.get('question_id')
-        resume_id = user_id  # user_id를 resume_id로 사용
 
         # 현재 질문을 사용된 상태로 업데이트
         if current_question_id:
@@ -503,7 +497,7 @@ def next_question(request, user_id):
 def check_resume(request):
     """사용자의 이력서가 존재하는지 확인하는 API"""
     try:
-        resume_id = request.GET.get('user_id')  # 기존 호환성 유지
+        resume_id = request.GET.get('resume_id')  # 기존 호환성 유지
 
         if not resume_id:
             return Response({
@@ -545,7 +539,7 @@ def check_questions(request):
     """
     사용자의 면접 질문이 존재하는지 확인하는 API
     """
-    resume_id = request.GET.get('user_id')  # 기존 호환성을 위해 user_id로 받지만 실제로는 resume_id
+    resume_id = request.GET.get('resume_id')  
 
     if not resume_id:
         return Response({"error": "resume_id가 필요합니다."}, status=400)
@@ -555,7 +549,6 @@ def check_questions(request):
     except ValueError:
         return Response({"error": "resume_id는 정수여야 합니다."}, status=400)
 
-    # user_id 대신 resume_id로 필터링
     questions = Question.objects.filter(resume_id=resume_id).order_by('order')
 
     if questions.exists():
@@ -656,10 +649,9 @@ def create_evaluation(answer):
 
 
 @api_view(['POST'])
-def process_interview_evaluation(request, user_id):
+def process_interview_evaluation(request, resume_id):
     """면접이 완료된 후 모든 답변을 평가하고 리포트 생성을 준비하는 API"""
     try:
-        resume_id = user_id  # user_id를 resume_id로 사용
         questions = Question.objects.filter(resume_id=resume_id).order_by('order')  # resume_id로 질문 조회
         evaluation_results = []
 
@@ -697,152 +689,82 @@ def process_interview_evaluation(request, user_id):
         }, status=500)
 
 
-@csrf_exempt  
 def upload_chunk(request):
     """ 청크 단위로 오디오 데이터를 서버에 저장하는 뷰 """
-    # chunk = request.FILES["chunk"]
-    # question_id = request.POST.get("questionId") # 질문 ID를 사용하여 파일 구분
 
-    # # 로컬 chunk 파일 경로 설정 및 저장
-    # os.makedirs("chunk_data/", exist_ok=True)
-    # chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
-
-    # # 청크 데이터를 추가 모드("ab")로 저장
-    # with open(chunk_file_path, "ab") as f:
-    #     f.write(chunk.read())
-    try: # ✅ POST 요청이 아닌 경우 405 오류 반환
-        if request.method != "POST":
-            return JsonResponse({"error": "POST 요청만 허용됩니다."}, status=405)
-
-        # ✅ 파일(chuck)이 요청에 포함되어 있는지 확인
+    try:        
         chunk = request.FILES.get("chunk")
-        if not chunk:
-            return JsonResponse({"error": "파일(chuck)이 요청에 포함되지 않았습니다."}, status=400)
-
-        # ✅ questionId가 없는 경우 오류 반환
         question_id = request.POST.get("questionId")
-        if not question_id:
-            return JsonResponse({"error": "questionId가 없습니다."}, status=400)
 
-        # ✅ 파일 저장 경로 설정 및 디렉터리 생성
         os.makedirs("chunk_data/", exist_ok=True)
         chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
 
-        # ✅ 청크 데이터를 추가 모드("ab")로 저장
         with open(chunk_file_path, "ab") as f:
             f.write(chunk.read())
 
-        # ✅ 정상적으로 저장되었음을 반환
         return JsonResponse({"status": "success", "message": "청크 저장 완료"})
 
     except Exception as e:
-        # ✅ 오류 발생 시 500 응답 반환
         return JsonResponse({"error": str(e)}, status=500)
 
-@csrf_exempt
+
 def finalize_audio(request):
-    """ 저장된 청크 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
-    if request.method == "POST":
-        try:
-            # 디버깅을 위한 로그 추가
-            print("Received POST data:", request.POST)
-            print("Received FILES:", request.FILES)
-            
-            # ✅ FormData에서 데이터 가져오기 (기존 코드 유지)
-            question_id = request.POST.get("questionId")
-            resume_id = request.POST.get("userId")
+    """ 저장된 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
+    
+    try:
+        question_id = request.POST.get("questionId")
+        resume_id = request.POST.get("resumeId")
+        chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
+        s3_filename = f"{resume_id}_{question_id}.wav"
+        s3_url = upload_to_s3(chunk_file_path, s3_filename)
 
-            if not question_id or not resume_id:
-                return JsonResponse({"error": "questionId 또는 resume_id가 누락되었습니다."}, status=400)
-
-            chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
-
-            # ✅ S3 업로드
-            s3_filename = f"{resume_id}_{question_id}.wav"  # userId를 resume_id로 변경
-            s3_url = upload_to_s3(chunk_file_path, s3_filename)
-
-            if not s3_url:
-                return JsonResponse({"error": "S3 업로드 실패"}, status=500)
-
-            # ✅ 로컬 파일 삭제
-            try:
-                os.remove(chunk_file_path)
-            except Exception as e:
-                print(f"⚠ 로컬 파일 삭제 실패: {e}")
-
-            return JsonResponse({"s3_url": s3_url})
-
-        except Exception as e:
-            print(f"❌ finalize_audio 오류: {e}")
-            return JsonResponse({"error": str(e)}, status=500)
-
-    return JsonResponse({"error": "POST 요청만 허용됩니다."}, status=405)
-
-@csrf_exempt
+        os.remove(chunk_file_path)
+        return JsonResponse({"s3_url": s3_url})
+    
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+    
+    
 def transcribe_audio(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body.decode("utf-8"))
-            s3_urls = data.get("s3_urls")
+    '''whisper를 호출해 음성을 텍스트화 하는 뷰'''
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        s3_urls = data.get("s3_urls")
+        transcribed_texts = []
 
-            transcribed_texts = []
+        for s3_url in s3_urls:
+            result = audio_to_text(s3_url)
+            transcribed_texts.append(result["transcription"])
 
-            for s3_url in s3_urls:
-                result = audio_to_text(s3_url)
-                transcribed_texts.append(result["transcription"])
+        return JsonResponse({"transcriptions": transcribed_texts})
 
-            return JsonResponse({
-                "transcriptions": transcribed_texts
-            })
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=500)
 
-@csrf_exempt
 def save_answers(request):
-    """
-    변환된 텍스트를 Answer 모델에 저장하는 API
-    """
-    if request.method == "POST":
-        try:
-            # ✅ 요청 데이터 확인
-            print("📌 요청 데이터:", request.body.decode("utf-8"))
+    """변환된 텍스트를 Answer 모델에 저장하는 뷰"""
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        s3_urls = data.get("s3Urls")
+        transcriptions = data.get("transcriptions")
+        resume_id = data.get("resumeId")
+        questions = Question.objects.filter(resume_id=resume_id).order_by("id")
 
-            data = json.loads(request.body.decode("utf-8"))
-            resume_id = data.get("userId")  # userId를 resume_id로 변경
-            s3_urls = data.get("s3Urls")
-            transactions = data.get("transcriptions")
+        with transaction.atomic():
+            for i in range(10):
+                s3_url = s3_urls[i]
+                transcribed_text = transcriptions[i]
+                question = questions[i]
 
-            # ✅ 질문 데이터 가져오기 (`filter()` 사용)
-            questions = Question.objects.filter(resume_id=resume_id).order_by("id")  # user_id를 resume_id로 변경
-            print(f"📌 resume_id={resume_id}의 질문 개수: {len(questions)}개")  # 로그 메시지도 변경
-
-            # ✅ 데이터 개수가 맞는지 확인
-            if len(questions) != len(s3_urls):
-                return JsonResponse({"error": "질문의 개수와 답변 개수가 일치하지 않습니다."}, status=400)
-
-            # ✅ 트랜잭션을 사용하여 Answer 저장
-            print("OK!!!!!!")
-            with transaction.atomic():
-                for i in range(10):
-                    s3_url = s3_urls[i]
-                    transcribed_text = transactions[i]
-                    question = questions[i]
-
-                    print(f"✅ 저장 중: {resume_id}, 질문: {question.text}, URL: {s3_url}")  # 로그 메시지도 변경
-
-                    Answer.objects.create(
-                        user_id=resume_id,  # user_id를 resume_id로 변경
-                        question=question,
-                        audio_url=s3_url,
-                        transcribed_text=transcribed_text
-                    )
-
-            print("✅ 답변 저장 완료")
-            return JsonResponse({"message": "✅ 답변 저장 완료!"}, status=200)
-
-        except Exception as e:
-            print(f"❌ 서버 오류 발생: {e}")  # ✅ 오류 로그 출력
+                Answer.objects.create(
+                    resume_id=resume_id,
+                    question=question,
+                    audio_url=s3_url,
+                    transcribed_text=transcribed_text
+                )
+        
+        return JsonResponse({"status": "success", "message": "답변 저장 완료"})
+    
+    except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
-
-

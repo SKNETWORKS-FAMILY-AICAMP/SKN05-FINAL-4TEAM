@@ -329,15 +329,15 @@ def upload_to_s3(file_path, s3_key):
     """
     로컬 파일을 AWS S3에 업로드하는 함수
     :param file_path: 로컬 파일 경로
-    :param s3_key: S3 버킷 내 저장될 파일 경로 (예: 'audio/recording.wav')
-    :return: S3 URL (업로드된 파일의 URL)
+    :param s3_key: S3 버킷 내 저장될 파일 경로
+    :return: S3 URL
     """
     try:
         s3_client.upload_file(file_path, AWS_STORAGE_BUCKET_NAME, s3_key)
         s3_client.put_object_acl(
            Bucket=AWS_STORAGE_BUCKET_NAME,
            Key=s3_key,
-           ACL="public-read"  # 🔥 퍼블릭 읽기 권한 부여
+           ACL="public-read"
         )
         return f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{region}.amazonaws.com/{s3_key}"
     except Exception as e:

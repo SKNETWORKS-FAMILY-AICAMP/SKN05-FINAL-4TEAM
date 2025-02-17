@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+from pathlib import Path
 from decouple import config
 import os
 from dotenv import load_dotenv 
@@ -113,6 +114,14 @@ else:
     }
 
 # 정적 파일 및 업로드 파일을 s3에 저장할 때
+# if DEBUG:
+#     # 개발 환경: 로컬 저장소
+#     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+#     STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+# else:
+#     # 배포 환경: S3 
+#     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+#     STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
 if DEBUG:
     # 개발 환경 (로컬 저장)
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
@@ -169,7 +178,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 RUNPOD_API_KEY = config("RUNPOD_API_KEY", default="")
 STT_ENDPOINT = config("STT_endpoint", default="")
 
-
+# rest framework를 json으로 설정
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.JSONRenderer',

@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const userId = 1; // 사용자 ID
+            const resumeId = 1; 
             const loadingModal = document.getElementById('loadingModal');
             
             // 로딩 모달 표시
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 // 1. 이력서 확인
-                const resumeResponse = await fetch(`/api/check_resume?user_id=${userId}`);
+                const resumeResponse = await fetch(`/api/check_resume?resume_id=${resumeId}`);  // user_id를 resume_id로 변경
                 const resumeData = await resumeResponse.json();
                 if (!resumeData.resume_exists) {
                     loadingModal.style.display = 'none';
@@ -72,9 +72,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken(), // CSRF 토큰 추가
+                        'X-CSRFToken': getCSRFToken(),
                     },
-                    body: JSON.stringify({ user_id:userId, jobposting_id: selectedJobId }),
+                    body: JSON.stringify({ 
+                        resume_id: resumeId,  // user_id를 resume_id로 변경
+                        jobposting_id: selectedJobId 
+                    }),
                 });
 
                 const generateData = await generateResponse.json();
@@ -86,13 +89,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 3. 질문 생성 완료 확인
                 const checkInterval = setInterval(async () => {
-                    const questionsResponse = await fetch(`/api/check_questions?user_id=${userId}`);
+                    const questionsResponse = await fetch(`/api/check_questions?resume_id=${resumeId}`);  // user_id를 resume_id로 변경
                     const questionsData = await questionsResponse.json();
 
                     if (questionsData.questions && questionsData.questions.length >= 10) {
                         clearInterval(checkInterval);
                         loadingModal.style.display = 'none';
-                        window.location.href = `/interview/${userId}/`;
+                        window.location.href = `/interview/${resumeId}/`; 
                     } else {
                         const loadingMessage = document.querySelector('#loadingModal p');
                         loadingMessage.textContent = `AI가 면접 질문을 생성 중입니다... (${questionsData.questions.length}/10)`;
@@ -154,6 +157,6 @@ function startReal() {
     }
 
     localStorage.setItem('selectedJobId', selectedJobId);
-    const userId = 1;
-    window.location.href = `/interview/${userId}/`;
+    const resumeId = 1; 
+    window.location.href = `/interview/${resumeId}/`; 
 }

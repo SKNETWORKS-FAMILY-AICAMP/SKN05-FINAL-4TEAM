@@ -650,7 +650,7 @@ def create_evaluation(answer):
 
 
 
-@csrf_exempt
+# @csrf_exempt
 @require_http_methods(["POST"])
 def process_interview_evaluation(request, resume_id):
     try:
@@ -673,7 +673,7 @@ def process_interview_evaluation(request, resume_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-@csrf_exempt  
+# @csrf_exempt  
 def upload_chunk(request):
     """ 청크 단위로 오디오 데이터를 서버에 저장하는 뷰 """
     # chunk = request.FILES["chunk"]
@@ -754,7 +754,7 @@ def finalize_audio(request):
 
     return JsonResponse({"error": "POST 요청만 허용됩니다."}, status=405)
 
-@csrf_exempt
+# @csrf_exempt
 def transcribe_audio(request):
     if request.method == "POST":
         try:
@@ -774,7 +774,7 @@ def transcribe_audio(request):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
 
-@csrf_exempt
+# @csrf_exempt
 def save_answers(request):
     """
     변환된 텍스트를 Answer 모델에 저장하는 API

@@ -61,11 +61,7 @@ def resume_form(request):
 @api_view(['GET'])
 def get_interview_report(request, resume_id):
     try:
-<<<<<<< HEAD
-        questions = Question.objects.filter(resume_id=resume_id).order_by('order')
-=======
         questions = Question.objects.filter(resume_id=resume_id).order_by('order') 
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
         questions_data = []
         
         for question in questions:
@@ -135,11 +131,7 @@ def evaluate_answer_view(request):
         job_posting = question.job_posting
         if job_posting is None:
             # 해당 question의 resume_id로 Resume를 찾고, 거기서 job_posting 정보를 가져옴
-<<<<<<< HEAD
-            resume = Resume.objects.filter(id=question.resume_id).first()
-=======
             resume = Resume.objects.filter(id=question.resume_id).first() 
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
             if resume and resume.job_posting:
                 job_posting = resume.job_posting
                 print(f"Found job posting from resume: {job_posting.company_name}")
@@ -225,10 +217,6 @@ def interview_report(request, resume_id):
     면접 리포트 페이지를 렌더링하고 자동으로 평가 프로세스를 시작합니다.
     """
     try:
-<<<<<<< HEAD
-        # 기본 정보 가져오기
-=======
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
         resume = get_object_or_404(Resume, id=resume_id)
         
         # 평가 프로세스 시작
@@ -253,11 +241,7 @@ def interview_report(request, resume_id):
         
         context = {
             'candidate_name': resume.name,
-<<<<<<< HEAD
-            'resume_id': resume_id,  
-=======
             'resume_id': resume_id,
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
         }
         
         return render(request, 'report.html', context)
@@ -397,10 +381,7 @@ def generate_questions_from_resume(resume_id, jobposting_id):
 def generate_questions(request):
     """질문 생성하는 API 엔드 포인트"""
     try:
-<<<<<<< HEAD
-=======
         # resume_id = request.data.get('user_id')
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
         resume_id = request.data.get('resume_id')
         job_id = request.data.get('jobposting_id')
         
@@ -447,10 +428,7 @@ def interview_page(request, resume_id):
         context = {
             'questions': questions,
             'resume_id': resume_id,
-<<<<<<< HEAD
-=======
             'resume_id': resume_id,
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
             'total_questions': questions.count(),
             'question': first_question.text,  # 첫 질문 텍스트
             'question_id': first_question.id  # 첫 질문 ID
@@ -469,24 +447,12 @@ def next_question(request, resume_id):
     """
     if request.method == "POST":
         current_question_id = request.POST.get('question_id')
-<<<<<<< HEAD
-
-        # 현재 질문을 사용된 상태로 업데이트
-        if current_question_id:
-            try:
-                current_question = Question.objects.get(id=current_question_id, resume_id=resume_id)
-                current_question.is_used = True
-                current_question.save()
-            except Question.DoesNotExist:
-                return JsonResponse({'error': '유효하지 않은 질문 ID 입니다.'}, status=400)
-=======
         print(f"Current question ID: {current_question_id}")  # 디버깅용
         
         try:
             # 현재 사용자의 모든 질문을 가져옴
             questions = Question.objects.filter(resume_id=resume_id).order_by('id')
             print(f"Total questions: {questions.count()}")  # 디버깅용
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
             
             if not questions:
                 return JsonResponse({"error": "질문을 찾을 수 없습니다."})
@@ -527,11 +493,7 @@ def next_question(request, resume_id):
 def check_resume(request):
     """사용자의 이력서가 존재하는지 확인하는 API"""
     try:
-<<<<<<< HEAD
-        resume_id = request.GET.get('resume_id')  # 기존 호환성 유지
-=======
         resume_id = request.GET.get('resume_id')  
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
 
         if not resume_id:
             return Response({
@@ -573,11 +535,7 @@ def check_questions(request):
     """
     사용자의 면접 질문이 존재하는지 확인하는 API
     """
-<<<<<<< HEAD
-    resume_id = request.GET.get('resume_id')  
-=======
     resume_id = request.GET.get('resume_id') 
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
 
     if not resume_id:
         return Response({"error": "resume_id가 필요합니다."}, status=400)
@@ -587,10 +545,6 @@ def check_questions(request):
     except ValueError:
         return Response({"error": "resume_id는 정수여야 합니다."}, status=400)
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
     questions = Question.objects.filter(resume_id=resume_id).order_by('order')
 
     if questions.exists():
@@ -695,14 +649,6 @@ def create_evaluation(answer):
 
 
 
-<<<<<<< HEAD
-@api_view(['POST'])
-def process_interview_evaluation(request, resume_id):
-    """면접이 완료된 후 모든 답변을 평가하고 리포트 생성을 준비하는 API"""
-    try:
-        questions = Question.objects.filter(resume_id=resume_id).order_by('order')  # resume_id로 질문 조회
-        evaluation_results = []
-=======
 @csrf_exempt
 @require_http_methods(["POST"])
 def process_interview_evaluation(request, resume_id):
@@ -711,7 +657,6 @@ def process_interview_evaluation(request, resume_id):
         questions = Question.objects.filter(resume_id=resume_id).order_by('order')
         if not questions.exists():
             return JsonResponse({'error': '질문 데이터가 없습니다.'}, status=404)
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
 
         # 평가 데이터 확인 로직...
         # (이미 평가가 완료되었으므로 추가 검증은 생략)
@@ -745,7 +690,6 @@ def upload_chunk(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-<<<<<<< HEAD
 
 def finalize_audio(request):
     """ 저장된 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
@@ -764,48 +708,6 @@ def finalize_audio(request):
         return JsonResponse({"error": str(e)}, status=500)
     
     
-=======
-# @csrf_exempt
-def finalize_audio(request):
-    """ 저장된 청크 파일을 S3에 업로드하고 로컬에서 삭제하는 뷰 """
-    if request.method == "POST":
-        try:
-            # 디버깅을 위한 로그 추가
-            print("Received POST data:", request.POST)
-            print("Received FILES:", request.FILES)
-            
-            # ✅ FormData에서 데이터 가져오기
-            question_id = request.POST.get("questionId")
-            resume_id = request.POST.get("resumeId")
-
-            if not question_id or not resume_id:
-                return JsonResponse({"error": "questionId 또는 resumeId 누락되었습니다."}, status=400)
-
-            chunk_file_path = os.path.join("chunk_data/", f"{question_id}.wav")
-
-            # ✅ S3 업로드
-            s3_filename = f"{resume_id}_{question_id}.wav" 
-            s3_url = upload_to_s3(chunk_file_path, s3_filename)
-
-            if not s3_url:
-                return JsonResponse({"error": "S3 업로드 실패"}, status=500)
-
-            # ✅ 로컬 파일 삭제
-            try:
-                os.remove(chunk_file_path)
-            except Exception as e:
-                print(f"⚠ 로컬 파일 삭제 실패: {e}")
-
-            return JsonResponse({"s3_url": s3_url})
-
-        except Exception as e:
-            print(f"❌ finalize_audio 오류: {e}")
-            return JsonResponse({"error": str(e)}, status=500)
-
-    return JsonResponse({"error": "POST 요청만 허용됩니다."}, status=405)
-
-@csrf_exempt
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
 def transcribe_audio(request):
     '''whisper를 호출해 음성을 텍스트화 하는 뷰'''
     try:
@@ -824,7 +726,6 @@ def transcribe_audio(request):
 
 
 def save_answers(request):
-<<<<<<< HEAD
     """변환된 텍스트를 Answer 모델에 저장하는 뷰"""
     try:
         data = json.loads(request.body.decode("utf-8"))
@@ -832,59 +733,6 @@ def save_answers(request):
         transcriptions = data.get("transcriptions")
         resume_id = data.get("resumeId")
         questions = Question.objects.filter(resume_id=resume_id).order_by("id")
-=======
-    """
-    변환된 텍스트를 Answer 모델에 저장하는 API
-    """
-    if request.method == "POST":
-        try:
-            # ✅ 요청 데이터 확인
-            print("📌 요청 데이터:", request.body.decode("utf-8"))
-
-            data = json.loads(request.body.decode("utf-8"))
-            resume_id = data.get("resume_id")
-            s3_urls = data.get("s3Urls")
-            transactions = data.get("transcriptions")
-
-            # ✅ 질문 데이터 가져오기
-            questions = Question.objects.filter(resume_id=resume_id).order_by("id")
-            print(f"📌 resume_id={resume_id}의 질문 개수: {len(questions)}개")
-
-            # ✅ 데이터 개수가 맞는지 확인
-            if len(questions) != len(s3_urls):
-                return JsonResponse({"error": "질문의 개수와 답변 개수가 일치하지 않습니다."}, status=400)
-
-            # ✅ 트랜잭션을 사용하여 Answer 저장
-            print("OK!!!!!!")
-            with transaction.atomic():
-                for i in range(10):
-                    s3_url = s3_urls[i]
-                    original_text = transactions[i]
-                    question = questions[i]
-
-                    print(f"✅ 저장 중: {resume_id}, 질문: {question.text}, URL: {s3_url}")
-
-                    # 요약을 위한 텍스트 보정 후 요약
-                    corrected_result = correct_transcription(original_text)
-                    corrected_text = corrected_result.get("보정된 텍스트", original_text)
-                    summary_result = summarize_answer(corrected_text)
-                    summarized_text = summary_result.get("요약", corrected_text)
-
-                    Answer.objects.create(
-                        resume_id=resume_id,
-                        question=question,
-                        audio_url=s3_url,
-                        transcribed_text=original_text,    # 원본 텍스트 저장
-                        summarized_text=summarized_text    # 요약된 텍스트 저장
-                    )
-
-            print("✅ 답변 저장 완료")
-            return JsonResponse({"message": "✅ 답변 저장 완료!"}, status=200)
-
-        except Exception as e:
-            print(f"❌ 서버 오류 발생: {e}")
-            return JsonResponse({"error": str(e)}, status=500)
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
 
         with transaction.atomic():
             for i in range(10):

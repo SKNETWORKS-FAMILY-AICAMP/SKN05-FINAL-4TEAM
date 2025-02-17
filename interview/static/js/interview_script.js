@@ -10,18 +10,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const questionTextElement = document.getElementById("questionText");
     const startButton = document.getElementById("startRecording");
     const stopButton = document.getElementById("stopRecording");
-<<<<<<< HEAD
     const questionIdInput = document.getElementById("questionId");  // 현재 질문의 ID
     const resumeIdInput = document.getElementById("resumeId");
     const totalQuestionsInput = document.getElementById("totalQuestions");  // 총 질문 수
     const s3Urls = [];
     const transcriptions = [];
-=======
-
-    const questionIdInput = document.getElementById("questionId");
-    const resumeIdInput = document.getElementById("resumeId");
-    const totalQuestionsInput = document.getElementById("totalQuestions");
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
 
     let currentQuestionIndex = 0;
     let timeLeft = 90;
@@ -98,15 +91,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 녹음 시작
     async function startRecording() {
-<<<<<<< HEAD
         const currentQuestionId = questionIdInput.value;
 
         if (!hasMediaPermission) {
             await requestMediaPermission();
         }
-=======
-        const resumeId = resumeIdInput.value;
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
         try {
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaRecorder = new MediaRecorder(stream);
@@ -117,15 +106,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             };
 
-<<<<<<< HEAD
-=======
-            // mediaRecorder.onstop = async () => {
-            //     console.log("📢 onstop 실행됨: finalizeAudio() 호출");
-            //     await finalizeAudio(currentQuestionId, resumeId);
-            // };
-            
-            // 🔹 1초마다 데이터 청크 생성 후 서버 전송
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
             mediaRecorder.start(1000);
 
         } catch (error) {
@@ -133,18 +113,6 @@ document.addEventListener("DOMContentLoaded", () => {
             hasMediaPermission = false;
         }
     }
-<<<<<<< HEAD
-=======
-    
-    // 녹음 종료
-    async function stopRecording() {
-        if (mediaRecorder && isRecording) {
-            currentQuestionId = questionIdInput.value;
-            const resumeId = resumeIdInput.value;
-            mediaRecorder.stop();
-            isRecording = false;
-            await finalizeAudio(currentQuestionId, resumeId);
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
 
 
     // 작은 청크 단위로 서버에 전송
@@ -166,16 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
     
-<<<<<<< HEAD
-=======
-
-    // 서버에서 모든 청크를 합쳐 S3로 업로드 요청
-    async function finalizeAudio(questionId, resumeId) {
-        try {
-            let formData = new FormData();
-            formData.append("questionId", questionId);
-            formData.append("resumeId", resumeId);
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
     
     // 녹음 종료
     async function stopRecording() {
@@ -216,11 +174,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch("/finalize_audio/", {
                 method: "POST",
                 headers: {
-<<<<<<< HEAD
                     "X-CSRFToken": getCSRFToken(),
-=======
-                    'X-CSRFToken': getCSRFToken(),  // CSRF 토큰 추가
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
                 },
                 body: formData
             }); 
@@ -274,7 +228,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
 
-<<<<<<< HEAD
     // Answer 테이블에 저장할 데이터 보내기
     async function saveAnswers() {
         try {
@@ -286,89 +239,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     "Content-Type": "application/json",
                     "X-CSRFToken": getCSRFToken(),
                 }
-=======
-    async function saveAnswers(resumeId) {
-        try {
-            if (transcriptions.length === 0) {
-                console.warn("⚠ 변환된 데이터가 없습니다. 저장하지 않습니다.");
-                return;
-            }
-            console.log(resumeId, s3Urls, transcriptions)
-            const response = await fetch("/save_answers/", {
-                method: "POST",
-                body: JSON.stringify({ resumeId, s3Urls, transcriptions }),
-                headers: { "Content-Type": "application/json" }
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
             });
         } catch (error) {
             alert("DB 저장 실패.");
         }
     }
 
-<<<<<<< HEAD
-
-    // 평가리포트 페이지 url 받아오기
-    async function generateReport() {
-        reportBtn.style.display = "none";
-        reportButton.style.display = "inline-block";
-        const resumeId = resumeIdInput.value
-
-        try {
-            const response = await fetch("/api/generate-report/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRFToken": getCSRFToken(),
-                },
-                body: JSON.stringify({ resume_id: resumeId }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP 오류: ${response.status}`);
-            }
-
-            const data = await response.json();
-            window.location.href = data.report_url;
-        } catch (error) {
-            buttonText.textContent = "리포트 생성 실패";
-            loadingSpinner.style.display = "none";
-        }
-    }
-
-
-    // reportBtn 누를 시
-    reportBtn.addEventListener("click", generateReport);
-
-
-    // AJAX를 이용해 다음 질문을 서버에서 가져오는 함수
-    async function nextQuestion() {
-        try {
-            const resumeId = resumeIdInput.value;
-            const currentQuestionId = questionIdInput.value;
-
-            const response = await fetch(`/next_question/${resumeId}/`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-CSRFToken": getCSRFToken(),
-                },
-                body: `question_id=${currentQuestionId}`,
-            });
-            
-            if (!response.ok) {  
-                throw new Error(`HTTP 오류: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (data.error) {
-                completeInterview();
-            } else {
-                questionTextElement.textContent = data.question;
-                questionIdInput.value = data.question_id;
-                currentQuestionIndex++;
-                clearInterval(questionTimerInterval);
-=======
     function viewReport() {
         try {
             // 모달의 버튼을 로딩 상태로 변경
@@ -422,12 +298,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 questionTextElement.textContent = data.question;
                 questionIdInput.value = data.question_id;
                 currentQuestionIndex++;
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
                 updateQuestionNumber();
                 timeLeft = 90;
                 updateTimerDisplay();
             }
-        } catch (error) {
+        }).catch (error) {
             alert("다음 질문을 불러오는 중 오류가 발생했습니다.");
         }
     }
@@ -459,18 +334,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 
-<<<<<<< HEAD
-    // 면접 도중에 메인 페이지로 이동
-    homeButton.addEventListener("click", (event) => {
-        const confirmed = confirm("면접을 중단하시겠습니까?\n중단 시 지금까지의 진행 내용이 저장되지 않습니다.");
-        if (!confirmed) {
-            event.preventDefault();
-        }
-    });
-
-
-    startTotalTimer();
-=======
     startTotalTimer(); // 총 타이머 시작
 
     // 리포트 버튼에 이벤트 리스너 추가
@@ -522,5 +385,4 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
->>>>>>> 0cbd846233851ab8a8640cea5b6ff13949ca592e
 });

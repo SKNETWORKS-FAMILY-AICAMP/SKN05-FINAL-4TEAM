@@ -74,4 +74,3 @@ class Evaluation(models.Model):
 
     def __str__(self):
         return f"Evaluation for Answer {self.answer.id}"
-

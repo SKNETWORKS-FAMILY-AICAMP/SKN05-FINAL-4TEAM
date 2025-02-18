@@ -244,12 +244,10 @@ const feedbackData = {
         }
 
     }
-    // 다른 평가 지표들에 대한 피드백도 추가 가능
 };
 
 // 섹션 피드백 업데이트 함수
 function updateOverallEvaluation(questions) {
-    // 일반 평가 지표별 평균 점수 계산
     const totalScores = {
         '질문 이해도': 0,
         '논리적 전개': 0,
@@ -258,11 +256,11 @@ function updateOverallEvaluation(questions) {
         '조직 적합도': 0
     };
     
-    // 비언어적 요소 점수 계산을 위한 별도 객체
     const nonverbalScores = {
         '말 더듬': 0,
         '말하기 속도': 0,
-        '발음 정확도': 0
+        '발음 정확도': 0,
+        // '실제 말하기 속도': 0
     };
     
     let questionCount = 0;
@@ -441,16 +439,16 @@ function createGaugeCharts(questions) {
 
     // 각 질문의 비언어 점수 수집
     questions.forEach((item, index) => {
-        console.log(`Checking nonverbal scores for Q${index + 1}:`, item.evaluation?.nonverbal_scores);  // 각 질문의 비언어 점수 로그
+        console.log(`Checking nonverbal scores for Q${index + 1}:`, item.evaluation?.nonverbal_scores);
         if (item.evaluation?.nonverbal_scores) {
             nonverbalScores.stutterScores.push(item.evaluation.nonverbal_scores.stuttering);
             nonverbalScores.speedScores.push(item.evaluation.nonverbal_scores.speaking_speed);
             nonverbalScores.pronunciationScores.push(item.evaluation.nonverbal_scores.pronunciation);
-            nonverbalScores.actualSpeedScores.push(item.evaluation.nonverbal_scores.actual_speed);
+            nonverbalScores.actualSpeedScores.push(item.evaluation.spm);
         }
     });
 
-    console.log('Collected nonverbal scores:', nonverbalScores);  // 수집된 점수 로그
+    console.log('Collected nonverbal scores:', nonverbalScores);
 
     // 데이터가 있는지 확인
     if (Object.values(nonverbalScores).every(arr => arr.length === 0)) {
@@ -623,7 +621,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>
                     <div class="answer-box">
                         <p class="answer-label">답변 내용</p>
-                        <p class="answer-content">${item.answer?.transcribed_text || '답변 없음'}</p> 
+                        <p class="answer-content">${item.summarized_text || '답변 없음'}</p> 
                     </div>
                     <div class="analysis-container" style="display: flex; gap: 20px;">
                         <div class="metrics-section" style="flex: 1;">

@@ -14,5 +14,6 @@ urlpatterns = [
     path('save_answers/', views.save_answers, name='save_answers'),
     path('next_question/<int:resume_id>/', views.next_question, name='next_question'),
     path('interview-report/<int:resume_id>/', views.interview_report, name='interview_report'),
-    path('api/interview-report/<int:resume_id>/', views.get_interview_report, name='get_interview_report')
+    path('api/interview-report/<int:resume_id>/', views.get_interview_report, name='get_interview_report'),
+    path('create_evaluation/<int:resume_id>/', views.create_evaluation, name='create_evaluation'),
 ]

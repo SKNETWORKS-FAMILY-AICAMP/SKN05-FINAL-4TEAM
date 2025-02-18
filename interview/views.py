@@ -310,38 +310,110 @@ def transcribe_audio(request):
         return JsonResponse({"error": str(e)}, status=500)
 
             
+# def save_answers(request):
+#     '''변환된 텍스트를 Answer 모델에 저장하는 뷰'''
+
+#     try:
+#         data = json.loads(request.body.decode("utf-8"))
+#         resume_id = data.get("resumeId")
+#         s3_urls = data.get("s3Urls")
+#         transcriptions = data.get("transcriptions")
+#         questions = Question.objects.filter(resume_id=resume_id).order_by("id")
+
+#         # 디버깅을 위한 로그
+#         print("Received data:", {
+#             "resumeId": resume_id,
+#             "s3_urls": s3_urls,
+#             "transcriptions": transcriptions
+#         })
+
+#         with transaction.atomic():
+#             for i in range(len(s3_urls)):
+#                 try:
+#                     s3_url = s3_urls[i]
+#                     original_text = transcriptions[0][i] if isinstance(transcriptions, list) else transcriptions[i]
+#                     question = questions[i]
+#                     if original_text.strip():
+#                         corrected_result = correct_transcription(original_text)
+#                         corrected_text = corrected_result.get("보정된 텍스트", original_text)
+#                         summary_result = summarize_answer(corrected_text)
+#                         summarized_text = summary_result.get("요약", corrected_text)
+#                     else:
+#                         corrected_text = "답변이 없습니다."
+#                         summarized_text = "답변이 없습니다."
+
+#                     Answer.objects.create(
+#                         resume_id=resume_id,
+#                         question=question,
+#                         audio_url=s3_url,
+#                         transcribed_text=original_text,
+#                         summarized_text=summarized_text
+#                     )
+
+#                 except IndexError as e:
+#                     return JsonResponse({
+#                         "error": f"Index error at position {i}. Arrays lengths: s3_urls={len(s3_urls)}, transcriptions={len(transcriptions)}"
+#                     }, status=500)
+#                 except Exception as e:
+#                     return JsonResponse({"error": str(e)}, status=500)
+
+#         return JsonResponse({"message": "답변 저장 완료"}, status=200)
+
+#     except Exception as e:
+#         print("Error in save_answers:", str(e))  # 서버 로그에 에러 출력
+#         return JsonResponse({"error": str(e)}, status=500)
+
 def save_answers(request):
     '''변환된 텍스트를 Answer 모델에 저장하는 뷰'''
 
     try:
         data = json.loads(request.body.decode("utf-8"))
-        resume_id = data.get("resume_id")
+        resume_id = data.get("resumeId")
         s3_urls = data.get("s3Urls")
         transcriptions = data.get("transcriptions")
         questions = Question.objects.filter(resume_id=resume_id).order_by("id")
 
-        with transaction.atomic():
-            for i in range(10):
-                s3_url = s3_urls[i]
-                original_text = transcriptions[0][i]
-                question = questions[i]
-
-                corrected_result = correct_transcription(original_text)
-                corrected_text = corrected_result.get("보정된 텍스트", original_text)
-                summary_result = summarize_answer(corrected_text)
-                summarized_text = summary_result.get("요약", corrected_text)
-
-                Answer.objects.create(
-                    resume_id=resume_id,
-                    question=question,
-                    audio_url=s3_url,
-                    transcribed_text=original_text,
-                    summarized_text=summarized_text
-                )
+        if len(s3_urls) != 10:
+            return JsonResponse({"error": "10개의 답변이 필요합니다."}, status=400)
         
+        # 디버깅을 위한 로그
+        print("Received data:", {
+            "resumeId": resume_id,
+            "s3_urls": s3_urls,
+            "transcriptions": transcriptions
+        })
+
+        with transaction.atomic():
+            for i in range(len(s3_urls)):
+                try:
+                    s3_url = s3_urls[i]
+                    original_text = transcriptions[0][i]
+                    question = questions[i]
+
+                    corrected_result = correct_transcription(original_text)
+                    corrected_text = corrected_result.get("보정된 텍스트", original_text)
+                    summary_result = summarize_answer(corrected_text)
+                    summarized_text = summary_result.get("요약", corrected_text)
+
+                    Answer.objects.create(
+                        resume_id=resume_id,
+                        question=question,
+                        audio_url=s3_url,
+                        transcribed_text=original_text,
+                        summarized_text=summarized_text
+                    )
+
+                except IndexError as e:
+                    return JsonResponse({
+                        "error": f"Index error at position {i}. Arrays lengths: s3_urls={len(s3_urls)}, transcriptions={len(transcriptions)}"
+                    }, status=500)
+                except Exception as e:
+                    return JsonResponse({"error": str(e)}, status=500)
+
         return JsonResponse({"message": "답변 저장 완료"}, status=200)
-    
+
     except Exception as e:
+        print("Error in save_answers:", str(e))  # 서버 로그에 에러 출력
         return JsonResponse({"error": str(e)}, status=500)
 
 
@@ -404,6 +476,16 @@ def create_evaluation(answer):
 
         total_score = sum(scores.values())
 
+        # 비언어적 평가 기본값 설정(audio_url이 없을 경우 대비)
+        nonverbal_scores = {
+            'pronunciation':0,
+            'speaking_speed':0,
+            'stuttering': 0
+        }
+        nonverbal_improvements=[]
+        spm = 0
+
+
         if answer.audio_url:
             try:
                 nonverbal_result, spm = audio_analysis(answer.audio_url)
@@ -411,7 +493,7 @@ def create_evaluation(answer):
                 nonverbal_scores = {
                     'pronunciation': nonverbal_result['발음']['점수'],
                     'speaking_speed': nonverbal_result['빠르기']['점수'],
-                    'stuttering': nonverbal_result['말더듬']['점수']
+                    'stuttering': nonverbal_result['말더듬']['점수'],
                 }
 
                 nonverbal_improvements = [
@@ -484,6 +566,9 @@ def get_interview_report(request, resume_id):
         for question in questions:
             answer = Answer.objects.filter(question=question).first()
             evaluation = Evaluation.objects.filter(answer=answer).first()
+
+            summarized_text = answer.summarized_text if answer else "답변 없음"
+
             evaluation_data = {
                 'scores': evaluation.scores,
                 'total_score': evaluation.total_score,
@@ -495,7 +580,7 @@ def get_interview_report(request, resume_id):
 
             questions_data.append({
                 'question_text': question.text,
-                'answer': answer.summarized_text,
+                'summarized_text': summarized_text,
                 'evaluation': evaluation_data
             })
 

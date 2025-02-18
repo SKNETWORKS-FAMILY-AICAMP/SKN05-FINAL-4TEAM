@@ -1,9 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
     
     const reportBtn = document.getElementById("reportBtn");
-    const reportButton = document.getElementById("reportButton");
-    const buttonText = document.getElementById("buttonText");
-    const loadingSpinner = document.getElementById("loadingSpinner");
+    // const reportButton = document.getElementById("reportButton");
+    // const buttonText = document.getElementById("buttonText");
+    // const loadingSpinner = document.getElementById("loadingSpinner");
     const homeButton = document.getElementById("homeButton");
 
     const timerElement = document.getElementById("timer");
@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const resumeIdInput = document.getElementById("resumeId");
     const totalQuestionsInput = document.getElementById("totalQuestions");
 
-    let questions = [];
+    // let questions = [];
     let currentQuestionIndex = 0;
     let timeLeft = 90;
     let totalTimeElapsed = 0;
@@ -286,27 +286,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            // URL에서 resumeId 추출 (next_question/1/ 형식에서)
-            const resumeId = window.location.pathname.split('/')[2];
+            const resumeId = resumeIdInput.value;
             
-            console.log('추출된 resumeId:', resumeId);  // 디버깅용
+            // transcriptions가 이중 배열인 경우 첫 번째 요소만 사용
+            let formattedTranscriptions = Array.isArray(transcriptions[0]) ? transcriptions[0] : transcriptions;
 
-            if (!resumeId) {
-                // 대체 방법: hidden input에서 가져오기 시도
-                const resumeIdFromInput = document.getElementById('resumeId').value;
-                if (!resumeIdFromInput) {
-                    throw new Error('Resume ID를 찾을 수 없습니다.');
-                }
-                resumeId = resumeIdFromInput;
-            }
+            console.log('Transcriptions 변환:', {
+                before: transcriptions,
+                after: formattedTranscriptions
+            });
 
             const requestData = {
                 resumeId: resumeId,
                 s3Urls: s3Urls,
-                transcriptions: [transcriptions]
-            }
-        
-            console.log('전송할 데이터:', requestData);
+                transcriptions: formattedTranscriptions
+            };
+
+            console.log('전송할 최종 데이터:', requestData);
 
             const response = await fetch('/save_answers/', {
                 method: 'POST',
@@ -326,40 +322,75 @@ document.addEventListener("DOMContentLoaded", () => {
             const result = await response.json();
             console.log('답변 저장 성공:', result);
             return result;
+
         } catch (error) {
             console.error('DB 저장 실패:', error);
             console.error('오류 상세정보:', {
                 message: error.message,
-                stack: error.stack,
-                requestData: requestData  // 디버깅을 위해 요청 데이터도 로깅
+                stack: error.stack
             });
             throw error;
         }
     }
 
-    function viewReport() {
+
+    async function viewReport(event) {
         try {
-            // 모달의 버튼을 로딩 상태로 변경
-            const originalText = this.textContent;
-            this.disabled = true;
-            this.innerHTML = `
+            const button = event.currentTarget;
+            const originalText = button.textContent;
+            const resumeId = resumeIdInput.value;
+
+            
+            if (!resumeId) {
+                throw new Error('Resume ID를 찾을 수 없습니다.');
+            }
+
+            console.log("Resume ID:", resumeId);
+
+            button.disabled = true;
+            button.innerHTML = `
                 <span>AI 리포트 생성 중...</span>
                 <div class="spinner"></div>
             `;
 
-            const resumeId = document.getElementById('resumeIdInput').value;
-            
-            // 리포트 페이지로 직접 이동 (평가 프로세스 호출 없이)
-            window.location.href = `/interview-report/${resumeId}/`;
+            // 평가 프로세스 API 호출
+            const response = await fetch(`/interview-report/${resumeId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+            },
+                credentials: 'same-origin'
+            });
 
-        } catch (error) {
+            if (!response.ok) {
+                throw new Error('서버 응답 오류');
+            }
+
+            const data = await response.json();
+            console.log('평가 완료:', data);
+
+            // report URL로 리다이렉트
+            window.location.href = `/interview-report/${resumeId}/`;
+            
+        } catch(error) {
             console.error('Error:', error);
             alert('리포트 생성 중 오류가 발생했습니다.');
-            this.disabled = false;
-            this.innerHTML = originalText;
-        }
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+            }
+
     }
-    reportBtn.addEventListener("click", viewReport);
+
+    // 리포트 버튼에 이벤트 리스너 추가
+    if (reportBtn) {
+        reportBtn.addEventListener("click", viewReport);
+    }
+
+    // 리포트 페이지로 직접 이동 (평가 프로세스 호출 없이)
+    // window.location.href = `/interview-report/${resumeId}/`;
 
     // AJAX를 이용해 다음 질문을 서버에서 가져오는 함수
     function nextQuestion() {
@@ -492,56 +523,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
     startTotalTimer(); // 총 타이머 시작
 
-    // 리포트 버튼에 이벤트 리스너 추가
-    const reportButtonModal = document.querySelector('.report-button');
-    if (reportButtonModal) {
-        reportButtonModal.addEventListener('click', async () => {
-            try {
-                // 모달의 버튼을 로딩 상태로 변경
-                const originalText = this.textContent;
-                this.disabled = true;
-                this.innerHTML = `
-                    <span>AI 리포트 생성 중...</span>
-                    <div class="spinner"></div>
-                `;
-
-                const resume_id = resumeIdInput.value;
-                await transcribeAll();
-                await saveAnswers(resume_id);
-                
-                // 평가 프로세스 API 호출
-                fetch(`/create_evaluation/${resume_id}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    },
-                    credentials: 'same-origin'
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('서버 응답 오류');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // URL 패턴 수정 (올바른 URL로 리다이렉트)
-                    window.location.href = `/interview-report/${resumeId}/`;
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('리포트 생성 중 오류가 발생했습니다.');
-                    // 에러 시 버튼 복구
-                    this.disabled = false;
-                    this.innerHTML = originalText;
-                });
-
-            } catch (error) {
-                console.error('Error:', error);
-                alert('리포트 생성 중 오류가 발생했습니다.');
-                this.disabled = false;
-                this.innerHTML = originalText;
-            }
-        });
-    }
 });

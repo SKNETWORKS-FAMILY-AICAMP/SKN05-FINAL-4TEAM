@@ -387,13 +387,23 @@ def save_answers(request):
             for i in range(len(s3_urls)):
                 try:
                     s3_url = s3_urls[i]
-                    original_text = transcriptions[0][i]
+                    original_text = transcriptions[i]
+
+                    # 빈 문자열 처리
+                    if not original_text.strip():
+                        original_text = "답변이 녹음되지 않았습니다."
+
                     question = questions[i]
 
-                    corrected_result = correct_transcription(original_text)
-                    corrected_text = corrected_result.get("보정된 텍스트", original_text)
-                    summary_result = summarize_answer(corrected_text)
-                    summarized_text = summary_result.get("요약", corrected_text)
+                    # 빈 답변이 아닐 경우에만 보정 및 요약 진행
+                    if original_text != "답변이 녹음되지 않았습니다.":
+                        corrected_result = correct_transcription(original_text)
+                        corrected_text = corrected_result.get("보정된 텍스트", original_text)
+                        summary_result = summarize_answer(corrected_text)
+                        summarized_text = summary_result.get("요약", corrected_text)
+                    else:
+                        corrected_text = original_text
+                        summarized_text = original_text
 
                     Answer.objects.create(
                         resume_id=resume_id,
@@ -442,11 +452,15 @@ def next_question(request, resume_id):
     except Exception as e:
         return Response({"error": str(e)})
     
-
+# 헬퍼함수
 def create_evaluation(answer):
     """면접에 대한 평가를 생성하고 저장하는 함수"""
-
     try:
+        # audio_url 디버깅
+        if answer.audio_url:
+            print(f"Audio URL: {answer.audio_url}")  # 실제 저장된 경로 확인
+            print(f"File exists: {os.path.exists(answer.audio_url)}")  # 파일 존재 여부 확인
+            
         question = answer.question
         job_posting = question.job_posting
         
@@ -476,18 +490,19 @@ def create_evaluation(answer):
 
         total_score = sum(scores.values())
 
-        # 비언어적 평가 기본값 설정(audio_url이 없을 경우 대비)
+        # 비언어적 평가 부분 수정
         nonverbal_scores = {
-            'pronunciation':0,
-            'speaking_speed':0,
+            'pronunciation': 0,
+            'speaking_speed': 0,
             'stuttering': 0
         }
-        nonverbal_improvements=[]
+        nonverbal_improvements = []
         spm = 0
-
 
         if answer.audio_url:
             try:
+                print(f"Processing audio from URL: {answer.audio_url}")
+                # URL을 직접 audio_analysis 함수에 전달
                 nonverbal_result, spm = audio_analysis(answer.audio_url)
 
                 nonverbal_scores = {
@@ -505,6 +520,7 @@ def create_evaluation(answer):
                 
             except Exception as e:
                 print(f"Error in audio analysis: {e}")
+                print(f"Audio URL was: {answer.audio_url}")
 
         evaluation = Evaluation.objects.create(
             answer=answer,
@@ -525,7 +541,6 @@ def create_evaluation(answer):
 
 def interview_report(request, resume_id):
     """평가 프로세스를 시작하고 면접 리포트 페이지를 렌더링하는 뷰"""
-
     try:
         resume = get_object_or_404(Resume, id=resume_id)
         questions = Question.objects.filter(resume_id=resume_id).order_by('order')
@@ -533,63 +548,87 @@ def interview_report(request, resume_id):
 
         for question in questions:
             answer = Answer.objects.filter(question=question).first()
-            if Evaluation.objects.filter(answer=answer).exists():
-                continue
-            evaluation = create_evaluation(answer)
-
-            if evaluation:
-                evaluation_results.append({
-                    'question_id': question.id,
-                    'evaluation_id': evaluation.id,
-                    'total_score': evaluation.total_score
-                })
+            if not Evaluation.objects.filter(answer=answer).exists():
+                evaluation = create_evaluation(answer)
+                if evaluation:
+                    evaluation_results.append({
+                        'question_id': question.id,
+                        'evaluation_id': evaluation.id,
+                        'total_score': evaluation.total_score
+                    })
         
+        # POST 요청일 경우 JSON 응답
+        if request.method == 'POST':
+            return JsonResponse({
+                "message": "평가 생성 완료",
+                "evaluations": evaluation_results
+            })
+            
+        # GET 요청일 경우 페이지 렌더링
         context = {
             'candidate_name': resume.name,
             'resume_id': resume_id,
         }
-        
         return render(request, 'report.html', context)
         
     except Exception as e:
+        if request.method == 'POST':
+            return JsonResponse({"error": str(e)}, status=500)
         messages.error(request, "리포트 생성 중 오류가 발생했습니다.")
         return render(request, 'report.html', {'error': str(e)})
 
 
 def get_interview_report(request, resume_id):
-    '''평가리포트에 데이터 전달하는 뷰'''
-
+    """면접 리포트 데이터를 반환하는 API"""
     try:
-        questions = Question.objects.filter(resume_id=resume_id).order_by('order') 
-        questions_data = []
+        # 이력서와 관련 데이터 조회
+        resume = get_object_or_404(Resume, id=resume_id)
+        questions = Question.objects.filter(resume_id=resume_id).order_by('order')
         
+        # 응답 데이터 구성
+        report_data = {
+            'candidate_name': resume.name,
+            'questions': []
+        }
+        
+        # has_evaluations = False  # 평가 데이터 존재 여부 확인
+        
+        # 각 질문에 대한 데이터 수집
         for question in questions:
             answer = Answer.objects.filter(question=question).first()
+            if not answer:
+                continue
+                
             evaluation = Evaluation.objects.filter(answer=answer).first()
-
-            summarized_text = answer.summarized_text if answer else "답변 없음"
-
-            evaluation_data = {
+            if not evaluation:
+                continue
+                
+            # has_evaluations = True  # 평가 데이터가 하나라도 있음
+            
+            question_data = {
+                'question_id': question.id,
+                'question_text': question.text,
+                'answer_text': answer.transcribed_text,
                 'scores': evaluation.scores,
                 'total_score': evaluation.total_score,
                 'improvements': evaluation.improvements,
                 'nonverbal_scores': evaluation.nonverbal_scores,
                 'nonverbal_improvements': evaluation.nonverbal_improvements,
                 'spm': evaluation.spm
-                }
-
-            questions_data.append({
-                'question_text': question.text,
-                'summarized_text': summarized_text,
-                'evaluation': evaluation_data
-            })
-
-        return JsonResponse({
-            'status': 'success',
-            'data': {
-                'questions': questions_data
             }
-        })
-
+            report_data['questions'].append(question_data)
+        
+        # if not has_evaluations:
+        #     return JsonResponse({
+        #         "error": "평가 데이터가 아직 생성되지 않았습니다. API 할당량을 확인해주세요.",
+        #         "needs_evaluation": True
+        #     }, status=404)
+        
+        return JsonResponse(report_data)
+        
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        print(f"Error in get_interview_report: {str(e)}")
+        return JsonResponse({
+            "error": "리포트 데이터를 가져오는 중 오류가 발생했습니다.",
+            "detail": str(e)
+        }, status=500)

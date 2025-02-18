@@ -71,16 +71,16 @@
             <h3>모든 질문이 완료되었습니다.</h3>
             <p>총 면접 시간: <span id="finalTotalTime">00분 00초</span></p>
             <!-- 리포트 생성 버튼 -->
-            <button
+            <!-- <button
                 id="reportBtn"
                 data-url="{% url 'interview_report' resume_id=resume_id %}"
                 >
                 AI 리포트 보러가기</button>
-        <!-- 로딩 버튼 (리포트 생성 중 표시) -->
-        <button id="reportButton" type="button" disabled style="display: none;">
+        <-- 로딩 버튼 (리포트 생성 중 표시) -->
+        <!-- <button id="reportButton" type="button" disabled style="display: none;">
         <span id="buttonText">AI 리포트 생성 중...</span>
         <div id="loadingSpinner" class="spinner"></div>
-        </button>    
+        </button>     -->
         </div>
     </div>
 
@@ -88,13 +88,19 @@
         &copy; 2024 Commit. All rights reserved.
     </footer>
 
-    <!-- 모달 HTML 수정 -->
+    <!-- 모달 HTML -->
     <div class="modal-overlay" id="completionModal">
         <div class="modal-content">
             <h3>면접이 종료되었습니다</h3>
             <p>총 면접 시간: <span id="modalTotalTime">00분 00초</span></p>
             <div class="modal-buttons">
-                <button class="report-button">AI 리포트 확인하기</button>
+                <button 
+                    id="reportBtn" 
+                    class="report-button"
+                    data-url="{% url 'interview_report' resume_id=resume_id %}"
+                >
+                    AI 리포트 확인하기
+                </button>
             </div>
         </div>
     </div>

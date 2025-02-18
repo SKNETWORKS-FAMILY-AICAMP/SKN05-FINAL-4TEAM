@@ -8,8 +8,10 @@ import syllapy
 import requests
 import numpy as np
 from pydub import AudioSegment
+from distutils.spawn import find_executable
 from pydub.silence import detect_nonsilent
 from django.conf import settings
+from pydub.utils import which
 
 
 
@@ -53,22 +55,101 @@ def count_syllable(text):
 
 
 
+# def detection(audio_path, silence_thresh=-40, min_silence_len=1000):
+#     '''실제 스피치 시간을 측정하는 함수'''
+#     AudioSegment.converter = which("ffmpeg")
+    
+#     try:
+#         # 음성 파일 불러오기
+#         if audio_path.startswith("http"):
+#             try:
+#                 response = requests.get(audio_path)
+#                 if response.status_code != 200:
+#                     print(f"Failed to download audio: {response.status_code}")
+#                     return 0
+#                 audio_file = io.BytesIO(response.content)
+#             except Exception as e:
+#                 print(f"Error downloading audio: {e}")
+#                 return 0
+#         else:
+#             audio_file = audio_path
+
+#         # 실제 스피치 시간 구하기
+#         audio = AudioSegment.from_file(audio_file, format="wav")\
+#                 .set_frame_rate(16000)\
+#                 .set_channels(1)
+        
+#         nonsilent_ranges = detect_nonsilent(
+#             audio, 
+#             min_silence_len=min_silence_len, 
+#             silence_thresh=silence_thresh
+#         )
+        
+#         if not nonsilent_ranges:  # 무음 구간이 없는 경우 처리
+#             return len(audio) / 1000
+            
+#         speech_segments = [end / 1000 - start / 1000 for start, end in nonsilent_ranges]
+#         total_speech = sum(speech_segments)
+
+#         return total_speech
+
+#     except Exception as e:
+#         print(f"Error in detection: {str(e)}")
+#         return 0
+
 def detection(audio_path, silence_thresh=-40, min_silence_len=1000):
-  '''실제 스피치 시간을 측정'''
-  # 음성 파일 불러오기
-  if audio_path.startswith("http"):
-    response = requests.get(audio_path)
-    audio_file = io.BytesIO(response.content)
-  else:
-    audio_file = audio_path
-  # 실제 스피치 시간 구하기
-  audio = AudioSegment.from_file(audio_file, format="wav").set_frame_rate(16000).set_channels(1)
-  nonsilent_ranges = detect_nonsilent(audio, min_silence_len=min_silence_len, silence_thresh=silence_thresh)
-  speech_segments = [end / 1000 - start / 1000 for start, end in nonsilent_ranges]
-  total_speech = sum(speech_segments)
+    '''실제 스피치 시간을 측정'''
+    AudioSegment.converter = which("ffmpeg")
+    
+    try:
+        # 음성 파일 불러오기
+        if audio_path.startswith("http"):
+            try:
+                response = requests.get(audio_path)
+                if response.status_code != 200:
+                    print(f"Failed to download audio: {response.status_code}")
+                    return 0
+                    
+                # 임시 AudioSegment 생성 후 WAV로 재변환
+                temp_seg = AudioSegment.from_file(io.BytesIO(response.content))
+                buffer = io.BytesIO()
+                temp_seg.export(buffer, format="wav")  # WAV 형식으로 재인코딩
+                buffer.seek(0)
+                audio_file = buffer
+                
+            except Exception as e:
+                print(f"Error downloading audio: {e}")
+                return 0
+        else:
+            audio_file = audio_path
 
-  return total_speech
+        # 실제 스피치 시간 구하기
+        try:
+            audio = AudioSegment.from_file(audio_file, format="wav")\
+                    .set_frame_rate(16000)\
+                    .set_channels(1)
+            
+            nonsilent_ranges = detect_nonsilent(
+                audio, 
+                min_silence_len=min_silence_len, 
+                silence_thresh=silence_thresh
+            )
+            
+            if not nonsilent_ranges: 
+                return len(audio) / 1000
+                
+            speech_segments = [end / 1000 - start / 1000 for start, end in nonsilent_ranges]
+            total_speech = sum(speech_segments)
 
+            return total_speech
+
+        except Exception as e:
+            print(f"Error processing audio: {e}")
+            return 0
+
+    except Exception as e:
+        print(f"Error in detection: {str(e)}")
+        return 0
 
 
 def stutter(text):
@@ -325,6 +406,25 @@ s3_client = boto3.client(
     region_name=region
 )
 
+# def upload_to_s3(file_path, s3_key): 윤관님 코드
+#     """
+#     로컬 파일을 AWS S3에 업로드하는 함수
+#     :param file_path: 로컬 파일 경로
+#     :param s3_key: S3 버킷 내 저장될 파일 경로 (예: 'audio/recording.wav')
+#     :return: S3 URL (업로드된 파일의 URL)
+#     """
+#     try:
+#         s3_client.upload_file(file_path, AWS_STORAGE_BUCKET_NAME, s3_key)
+#         s3_client.put_object_acl(
+#            Bucket=AWS_STORAGE_BUCKET_NAME,
+#            Key=s3_key,
+#            ACL="public-read"  # 🔥 퍼블릭 읽기 권한 부여
+#         )
+#         return f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{region}.amazonaws.com/{s3_key}"
+#     except Exception as e:
+#         print(f"S3 업로드 실패: {e}")
+#         return None
+
 def upload_to_s3(file_path, s3_key):
     """
     로컬 파일을 AWS S3에 업로드하는 함수
@@ -333,17 +433,25 @@ def upload_to_s3(file_path, s3_key):
     :return: S3 URL (업로드된 파일의 URL)
     """
     try:
-        s3_client.upload_file(file_path, AWS_STORAGE_BUCKET_NAME, s3_key)
-        s3_client.put_object_acl(
-           Bucket=AWS_STORAGE_BUCKET_NAME,
-           Key=s3_key,
-           ACL="public-read"  # 🔥 퍼블릭 읽기 권한 부여
+        # WAV 파일 검증 및 설정
+        extra_args = {
+            'ContentType': 'audio/wav',  # WAV 파일 타입 명시
+            'ACL': 'public-read',  # 퍼블릭 읽기 권한
+        }
+
+        # 파일 업로드 (ExtraArgs로 설정 전달)
+        s3_client.upload_file(
+            file_path, 
+            AWS_STORAGE_BUCKET_NAME, 
+            s3_key,
+            ExtraArgs=extra_args
         )
+
         return f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{region}.amazonaws.com/{s3_key}"
+        
     except Exception as e:
         print(f"S3 업로드 실패: {e}")
         return None
-
 
 
 # 답변 평가 모델(비언어 평가 제외)
@@ -462,41 +570,36 @@ def summarize_answer(text):
     요약 규칙:
     1. 50자 내외로 짧게 작성할 것.
     2. 답변자의 역할, 사용 기술, 성과를 강조할 것.
-    3. 문장은 간결하고 명확하게 작성할 것.
-    4. 불필요한 설명(데이터 설명, 일반적인 과정) 제거할 것.
+    3. 문장은 간결하고 명확하게 키워드로 작성할 것.
+    4. 불필요한 설명 제거할 것.
     5. 수치는 유지하되, 내용이 중복되지 않도록 할 것.
 
     면접 답변:
     {text}
 
     ==반환 형식==
-    총 요약과 핵심 키워드를 JSON 형식으로 반환해라.
-    한국어만 사용해라.
-    (요약과 키워드를 제외한 그 어떤 문자열도 반환하지 마라.)
+    {{"요약": "요약된 내용"}}
     """
 
-    # 요약 생성
-    while True:
-        try:
-            response = openai.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "당신은 전문 면접 답변 요약가입니다."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2
-            )
-            
-            result = json.loads(response.choices[0].message.content)
-            
-            return result
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "당신은 전문 면접 답변 요약가입니다."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2
+        )
+        
+        result = json.loads(response.choices[0].message.content)
+        if not isinstance(result, dict) or "요약" not in result:
+            return {"요약": text}
+        
+        return result
 
-        except json.JSONDecodeError:
-            prompt += "\n\n JSON 형식으로 다시 반환해주세요."
-            continue
-        except Exception as e:
-            print(f"Error in summarize_answer: {e}")
-            return None
+    except Exception as e:
+        print(f"Error in summarize_answer: {e}")
+        return {"요약": text}
 
 # 답변 보정 모델
 def correct_transcription(text):
@@ -516,30 +619,25 @@ def correct_transcription(text):
     {text}
 
     ==반환 형식==
-    보정된 텍스트를 JSON 형식으로 반환해라.
-    한국어만 사용해라.
-    (보정된 텍스트를 제외한 그 어떤 문자열도 반환하지 마라.)
+    {{"보정된 텍스트": "보정된 내용"}}
     """
 
-    # 보정 생성
-    while True:
-        try:
-            response = openai.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "당신은 전문 텍스트 교정가입니다."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2
-            )
-            
-            result = json.loads(response.choices[0].message.content)
-            
-            return result
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "당신은 전문 텍스트 교정가입니다."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2
+        )
+        
+        result = json.loads(response.choices[0].message.content)
+        if not isinstance(result, dict) or "보정된 텍스트" not in result:
+            return {"보정된 텍스트": text}
+        
+        return result
 
-        except json.JSONDecodeError:
-            prompt += "\n\n JSON 형식으로 다시 반환해주세요."
-            continue
-        except Exception as e:
-            print(f"Error in correct_transcription: {e}")
-            return None
+    except Exception as e:
+        print(f"Error in correct_transcription: {e}")
+        return {"보정된 텍스트": text}

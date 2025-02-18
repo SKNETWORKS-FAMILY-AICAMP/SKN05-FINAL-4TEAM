@@ -2,116 +2,6 @@
 const GENERAL_CATEGORIES = ['질문 이해도', '논리적 전개', '내용의 구체성', '문제 해결 접근', '조직 적합도'];
 const NONVERBAL_CATEGORIES = ['말 더듬', '말하기 속도', '발음 정확도'];
 
-// PDF 다운로드 함수를 전역 스코프에 정의
-window.downloadPDF = function() {
-    console.log('1. PDF 다운로드 함수 시작'); // 디버깅 로그 1
-    
-    const element = document.querySelector('.container');
-    const downloadSection = document.querySelector('.download-section');
-    
-    if (!element) {
-        console.error('컨테이너 요소를 찾을 수 없습니다');
-        return;
-    }
-    console.log('2. 컨테이너 요소 찾음:', element); // 디버깅 로그 2
-    
-    const downloadButton = document.querySelector('.download-button');
-    if (downloadButton) {
-        downloadButton.disabled = true;
-        downloadButton.textContent = '다운로드 중...';
-        console.log('3. 다운로드 버튼 비활성화됨'); // 디버깅 로그 3
-    }
-
-    // 다운로드 버튼 영역 임시 숨김
-    if (downloadSection) {
-        downloadSection.style.display = 'none';
-        console.log('4. 다운로드 섹션 숨김'); // 디버깅 로그 4
-    }
-
-    // 현재 스크롤 위치 저장
-    const scrollPos = window.scrollY;
-    console.log('5. 현재 스크롤 위치:', scrollPos); // 디버깅 로그 5
-
-    setTimeout(() => {
-        console.log('6. setTimeout 시작'); // 디버깅 로그 6
-        
-        // PDF 생성 전에 스타일 보존
-        const analysisGrid = element.querySelectorAll('.analysis-grid');
-        console.log('7. 분석 그리드 요소 수:', analysisGrid.length); // 디버깅 로그 7
-        
-        // ... 기존 스타일 설정 코드 ...
-
-        console.log('8. PDF 옵션 설정 시작'); // 디버깅 로그 8
-        const options = {
-            margin: 10,
-            filename: `면접_리포트_${getCurrentDate()}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { 
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                scrollY: 0,
-                logging: true,
-                height: Math.ceil(document.documentElement.scrollHeight * 0.80),
-                windowHeight: Math.ceil(document.documentElement.scrollHeight * 0.80)
-            },
-            jsPDF: { 
-                unit: 'mm', 
-                format: 'a4', 
-                orientation: 'portrait',
-                compress: true,
-                putOnlyUsedFonts: true,
-                precision: 16
-            },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
-        console.log('9. PDF 옵션:', options); // 디버깅 로그 9
-
-        // 스타일 적용 전 상태 저장
-        console.log('10. 현재 스타일 상태:', {
-            transform: element.style.transform,
-            width: element.style.width,
-            maxWidth: element.style.maxWidth
-        }); // 디버깅 로그 10
-
-        // ... 스타일 적용 코드 ...
-
-        console.log('11. PDF 생성 시작'); // 디버깅 로그 11
-        html2pdf()
-            .from(element)
-            .set(options)
-            .save()
-            .then(() => {
-                console.log('12. PDF 생성 성공'); // 디버깅 로그 12
-                // 원래 스타일 복원
-                document.body.style.overflow = '';
-                element.style.transform = originalTransform;
-                element.style.width = originalWidth;
-                element.style.maxWidth = originalMaxWidth;
-                
-                if (downloadSection) {
-                    downloadSection.style.display = '';
-                }
-                window.scrollTo(0, scrollPos);
-                
-                if (downloadButton) {
-                    downloadButton.disabled = false;
-                    downloadButton.textContent = 'PDF로 다운로드';
-                }
-                console.log('13. 모든 스타일 복원 완료'); // 디버깅 로그 13
-            })
-            .catch(err => {
-                console.error('14. PDF 생성 실패:', err); // 디버깅 로그 14
-                if (downloadSection) {
-                    downloadSection.style.display = '';
-                }
-                if (downloadButton) {
-                    downloadButton.disabled = false;
-                    downloadButton.textContent = 'PDF로 다운로드';
-                }
-            });
-    }, 1000);
-};
 
 // 피드백 데이터 객체 정의
 const feedbackData = {
@@ -586,6 +476,29 @@ function calculateAverage(arr) {
     return arr.reduce((sum, val) => sum + val, 0) / arr.length;
 }
 
+async function fetchInterviewData() {
+    try {
+        const response = await fetch(`/api/interview-report/${resumeId}/`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch interview data');
+        }
+
+        console.log('Received data:', data);  // 디버깅용
+
+        // 데이터 검증 부분만 수정
+        if (!data.questions || data.questions.length === 0) {
+            alert("평가 데이터가 아직 생성되지 않았습니다. 잠시 후 다시 시도해주세요.");
+            return;  // 함수 종료
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        throw new Error('No interview data found');  // 기존 에러 메시지 유지
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // 날짜 표시
@@ -669,21 +582,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 createRadarChart(`radarChart${index}`, scores);
             }
         });
-
-        // PDF 다운로드 버튼 이벤트 리스너 추가
-        console.log('이벤트 리스너 추가 시작');
-        const downloadButton = document.querySelector('.download-button');
-        if (downloadButton) {
-            console.log('다운로드 버튼 찾음');
-            downloadButton.addEventListener('click', function(e) {
-                console.log('다운로드 버튼 클릭됨');
-                e.preventDefault();
-                window.downloadPDF();
-            });
-            console.log('이벤트 리스너 추가 완료');
-        } else {
-            console.log('다운로드 버튼을 찾을 수 없음');
-        }
 
         // 비언어적 평가 차트 생성 (updateOverallEvaluation 전에 호출)
         createGaugeCharts(questions);

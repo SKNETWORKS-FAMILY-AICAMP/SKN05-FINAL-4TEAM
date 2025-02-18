@@ -215,7 +215,7 @@ def audio_analysis(audio_path):
         
       final_result = json.loads(response.choices[0].message.content)
       
-      return final_result, pronunciation_score, SPM, stutter_result['총 카운트'], stutter_result['말더듬 유형'], audio_data['transcription']
+      return final_result, pronunciation_score, SPM, stutter_result['총 카운트'], stutter_result['말더듬 유형']
 
     except json.JSONDecodeError:
         prompt += "\n\n JSON 형식으로 다시 반환해주세요."

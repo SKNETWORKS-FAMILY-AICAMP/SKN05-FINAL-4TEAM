@@ -25,12 +25,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Django 설정
 SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-# DEBUG = config('DEBUG',default=False, cast=bool)
+# DEBUG = True
+DEBUG = config('DEBUG',default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = []
 # 배포환경 시
-# ALLOWED_HOSTS = config('ALLOWED_HOSTS',default='localhost').split(',')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS',default='localhost').split(',')
 
 # AWS S3설정
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
@@ -113,15 +113,6 @@ else:
         }
     }
 
-# 정적 파일 및 업로드 파일을 s3에 저장할 때
-# if DEBUG:
-#     # 개발 환경: 로컬 저장소
-#     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-#     STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-# else:
-#     # 배포 환경: S3 
-#     DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-#     STATICFILES_STORAGE = 'storages.backends.s3boto3.S3StaticStorage'
 if DEBUG:
     # 개발 환경 (로컬 저장)
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'

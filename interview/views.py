@@ -18,10 +18,10 @@ def main_page(request):
     """메인 페이지를 렌더링"""
 
     context = {
-        'resume': None  # 기본값
+        'resume': None 
     }
     
-    latest_resume = Resume.objects.order_by('-id').first()  # 가장 최근의 이력서
+    latest_resume = Resume.objects.order_by('-id').first() 
     if latest_resume:
         context['resume'] = latest_resume
     
@@ -109,7 +109,7 @@ def generate_questions(resume_id, jobposting_id):
             resume = Resume.objects.get(id=resume_id)
             job_posting = JobPosting.objects.get(id=jobposting_id)
             
-            Question.objects.filter(resume=resume).delete()  # 기존 질문 삭제
+            Question.objects.filter(resume=resume).delete() 
             
             resume_text = get_resume_text(resume_id)
 
@@ -133,7 +133,7 @@ def generate_questions(resume_id, jobposting_id):
             if not formatted_questions:
                 return None, error or "Failed to parse questions"
        
-            # 새 질문 데이터 저장
+
             for i, q in enumerate(formatted_questions, 1): 
                 Question.objects.create(
                     resume=resume,
@@ -309,59 +309,7 @@ def transcribe_audio(request):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
-            
-# def save_answers(request):
-#     '''변환된 텍스트를 Answer 모델에 저장하는 뷰'''
 
-#     try:
-#         data = json.loads(request.body.decode("utf-8"))
-#         resume_id = data.get("resumeId")
-#         s3_urls = data.get("s3Urls")
-#         transcriptions = data.get("transcriptions")
-#         questions = Question.objects.filter(resume_id=resume_id).order_by("id")
-
-#         # 디버깅을 위한 로그
-#         print("Received data:", {
-#             "resumeId": resume_id,
-#             "s3_urls": s3_urls,
-#             "transcriptions": transcriptions
-#         })
-
-#         with transaction.atomic():
-#             for i in range(len(s3_urls)):
-#                 try:
-#                     s3_url = s3_urls[i]
-#                     original_text = transcriptions[0][i] if isinstance(transcriptions, list) else transcriptions[i]
-#                     question = questions[i]
-#                     if original_text.strip():
-#                         corrected_result = correct_transcription(original_text)
-#                         corrected_text = corrected_result.get("보정된 텍스트", original_text)
-#                         summary_result = summarize_answer(corrected_text)
-#                         summarized_text = summary_result.get("요약", corrected_text)
-#                     else:
-#                         corrected_text = "답변이 없습니다."
-#                         summarized_text = "답변이 없습니다."
-
-#                     Answer.objects.create(
-#                         resume_id=resume_id,
-#                         question=question,
-#                         audio_url=s3_url,
-#                         transcribed_text=original_text,
-#                         summarized_text=summarized_text
-#                     )
-
-#                 except IndexError as e:
-#                     return JsonResponse({
-#                         "error": f"Index error at position {i}. Arrays lengths: s3_urls={len(s3_urls)}, transcriptions={len(transcriptions)}"
-#                     }, status=500)
-#                 except Exception as e:
-#                     return JsonResponse({"error": str(e)}, status=500)
-
-#         return JsonResponse({"message": "답변 저장 완료"}, status=200)
-
-#     except Exception as e:
-#         print("Error in save_answers:", str(e))  # 서버 로그에 에러 출력
-#         return JsonResponse({"error": str(e)}, status=500)
 
 def save_answers(request):
     '''변환된 텍스트를 Answer 모델에 저장하는 뷰'''
@@ -389,13 +337,11 @@ def save_answers(request):
                     s3_url = s3_urls[i]
                     original_text = transcriptions[i]
 
-                    # 빈 문자열 처리
                     if not original_text.strip():
                         original_text = "답변이 녹음되지 않았습니다."
 
                     question = questions[i]
 
-                    # 빈 답변이 아닐 경우에만 보정 및 요약 진행
                     if original_text != "답변이 녹음되지 않았습니다.":
                         corrected_result = correct_transcription(original_text)
                         corrected_text = corrected_result.get("보정된 텍스트", original_text)
@@ -423,7 +369,6 @@ def save_answers(request):
         return JsonResponse({"message": "답변 저장 완료"}, status=200)
 
     except Exception as e:
-        print("Error in save_answers:", str(e))  # 서버 로그에 에러 출력
         return JsonResponse({"error": str(e)}, status=500)
 
 
@@ -456,7 +401,6 @@ def next_question(request, resume_id):
 def create_evaluation(answer):
     """면접에 대한 평가를 생성하고 저장하는 함수"""
     try:
-        # audio_url 디버깅
         if answer.audio_url:
             print(f"Audio URL: {answer.audio_url}")  # 실제 저장된 경로 확인
             print(f"File exists: {os.path.exists(answer.audio_url)}")  # 파일 존재 여부 확인
@@ -490,19 +434,9 @@ def create_evaluation(answer):
 
         total_score = sum(scores.values())
 
-        # 비언어적 평가 부분 수정
-        nonverbal_scores = {
-            'pronunciation': 0,
-            'speaking_speed': 0,
-            'stuttering': 0
-        }
-        nonverbal_improvements = []
-        spm = 0
-
         if answer.audio_url:
             try:
                 print(f"Processing audio from URL: {answer.audio_url}")
-                # URL을 직접 audio_analysis 함수에 전달
                 nonverbal_result, spm = audio_analysis(answer.audio_url)
 
                 nonverbal_scores = {
@@ -557,14 +491,14 @@ def interview_report(request, resume_id):
                         'total_score': evaluation.total_score
                     })
         
-        # POST 요청일 경우 JSON 응답
+        # POST
         if request.method == 'POST':
             return JsonResponse({
                 "message": "평가 생성 완료",
                 "evaluations": evaluation_results
             })
             
-        # GET 요청일 경우 페이지 렌더링
+        # GET
         context = {
             'candidate_name': resume.name,
             'resume_id': resume_id,
@@ -581,19 +515,14 @@ def interview_report(request, resume_id):
 def get_interview_report(request, resume_id):
     """면접 리포트 데이터를 반환하는 API"""
     try:
-        # 이력서와 관련 데이터 조회
         resume = get_object_or_404(Resume, id=resume_id)
         questions = Question.objects.filter(resume_id=resume_id).order_by('order')
         
-        # 응답 데이터 구성
         report_data = {
             'candidate_name': resume.name,
             'questions': []
         }
         
-        # has_evaluations = False  # 평가 데이터 존재 여부 확인
-        
-        # 각 질문에 대한 데이터 수집
         for question in questions:
             answer = Answer.objects.filter(question=question).first()
             if not answer:
@@ -602,8 +531,6 @@ def get_interview_report(request, resume_id):
             evaluation = Evaluation.objects.filter(answer=answer).first()
             if not evaluation:
                 continue
-                
-            # has_evaluations = True  # 평가 데이터가 하나라도 있음
             
             question_data = {
                 'question_id': question.id,
@@ -617,12 +544,6 @@ def get_interview_report(request, resume_id):
                 'spm': evaluation.spm
             }
             report_data['questions'].append(question_data)
-        
-        # if not has_evaluations:
-        #     return JsonResponse({
-        #         "error": "평가 데이터가 아직 생성되지 않았습니다. API 할당량을 확인해주세요.",
-        #         "needs_evaluation": True
-        #     }, status=404)
         
         return JsonResponse(report_data)
         

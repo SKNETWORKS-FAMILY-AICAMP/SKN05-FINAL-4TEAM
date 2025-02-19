@@ -1,9 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
     
     const reportBtn = document.getElementById("reportBtn");
-    // const reportButton = document.getElementById("reportButton");
-    // const buttonText = document.getElementById("buttonText");
-    // const loadingSpinner = document.getElementById("loadingSpinner");
     const homeButton = document.getElementById("homeButton");
 
     const timerElement = document.getElementById("timer");
@@ -16,7 +13,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const resumeIdInput = document.getElementById("resumeId");
     const totalQuestionsInput = document.getElementById("totalQuestions");
 
-    // let questions = [];
     let currentQuestionIndex = 0;
     let timeLeft = 90;
     let totalTimeElapsed = 0;
@@ -177,7 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     'X-CSRFToken': getCSRFToken()
                 },
                 body: formData,
-                credentials: 'same-origin' //쿠키 포함하여 요청
+                credentials: 'same-origin' 
             });
         } catch (error) {
             console.error("청크 업로드 실패:", error);
@@ -333,7 +329,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-
     async function viewReport(event) {
         try {
             const button = event.currentTarget;
@@ -389,9 +384,6 @@ document.addEventListener("DOMContentLoaded", () => {
         reportBtn.addEventListener("click", viewReport);
     }
 
-    // 리포트 페이지로 직접 이동 (평가 프로세스 호출 없이)
-    // window.location.href = `/interview-report/${resumeId}/`;
-
     // AJAX를 이용해 다음 질문을 서버에서 가져오는 함수
     function nextQuestion() {
         const resumeId = resumeIdInput.value;
@@ -445,7 +437,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("voiceControls").style.display = "none";
 
         try {
-            // const resumeId = resumeIdInput.value; // resumeId 가져오기
             const resumeId = document.body.dataset.resumeId; 
 
             // 모달 표시 및 총 면접 시간 업데이트

@@ -2,7 +2,6 @@
 const GENERAL_CATEGORIES = ['질문 이해도', '논리적 전개', '내용의 구체성', '문제 해결 접근', '조직 적합도'];
 const NONVERBAL_CATEGORIES = ['말 더듬', '말하기 속도', '발음 정확도'];
 
-
 // 피드백 데이터 객체 정의
 const feedbackData = {
     '질문 이해도': {
@@ -156,19 +155,18 @@ function updateOverallEvaluation(questions) {
     let questionCount = 0;
     
     questions.forEach(item => {
-        if (item.evaluation?.scores) {
-            totalScores['질문 이해도'] += item.evaluation.scores.question_understanding || 0;
-            totalScores['논리적 전개'] += item.evaluation.scores.logical_flow || 0;
-            totalScores['내용의 구체성'] += item.evaluation.scores.content_specificity || 0;
-            totalScores['문제 해결 접근'] += item.evaluation.scores.problem_solving || 0;
-            totalScores['조직 적합도'] += item.evaluation.scores.organizational_fit || 0;
+        if (item.scores) {
+            totalScores['질문 이해도'] += item.scores.question_understanding || 0;
+            totalScores['논리적 전개'] += item.scores.logical_flow || 0;
+            totalScores['내용의 구체성'] += item.scores.content_specificity || 0;
+            totalScores['문제 해결 접근'] += item.scores.problem_solving || 0;
+            totalScores['조직 적합도'] += item.scores.organizational_fit || 0;
             
             // 비언어적 요소 점수 별도 처리
-            if (item.evaluation.nonverbal_scores) {
-                nonverbalScores['말 더듬'] += item.evaluation.nonverbal_scores.stuttering || 0;
-                nonverbalScores['말하기 속도'] += item.evaluation.nonverbal_scores.speaking_speed || 0;
-                nonverbalScores['발음 정확도'] += item.evaluation.nonverbal_scores.pronunciation || 0;
-            }
+            nonverbalScores['말 더듬'] += item.nonverbal_scores.stuttering || 0;
+            nonverbalScores['말하기 속도'] += item.nonverbal_scores.speaking_speed || 0;
+            nonverbalScores['발음 정확도'] += item.nonverbal_scores.pronunciation || 0;
+            
             questionCount++;
         }
     });
@@ -190,10 +188,12 @@ function updateOverallEvaluation(questions) {
     createBarCharts(averageScores, averageNonverbalScores);
 
     // 일반 평가 지표의 강점과 약점 찾기
-    const generalScores = findMaxMinScores(averageScores, GENERAL_CATEGORIES);
+    // const generalScores = findMaxMinScores(averageScores, GENERAL_CATEGORIES);
+    const generalScores = findMaxMinScores(averageScores);
     
     // 비언어적 요소의 강점과 약점 찾기
-    const nonverbalResults = findMaxMinScores(averageNonverbalScores, NONVERBAL_CATEGORIES);
+    // const nonverbalResults = findMaxMinScores(averageNonverbalScores, NONVERBAL_CATEGORIES);
+    const nonverbalResults = findMaxMinScores(averageNonverbalScores);
 
     // 일반 평가 지표 피드백 업데이트 (메인 섹션)
     updateSectionFeedback('.general-evaluation .best-score', generalScores.maxCategory, generalScores.maxScore, 'best');
@@ -329,12 +329,15 @@ function createGaugeCharts(questions) {
 
     // 각 질문의 비언어 점수 수집
     questions.forEach((item, index) => {
-        console.log(`Checking nonverbal scores for Q${index + 1}:`, item.evaluation?.nonverbal_scores);
-        if (item.evaluation?.nonverbal_scores) {
-            nonverbalScores.stutterScores.push(item.evaluation.nonverbal_scores.stuttering);
-            nonverbalScores.speedScores.push(item.evaluation.nonverbal_scores.speaking_speed);
-            nonverbalScores.pronunciationScores.push(item.evaluation.nonverbal_scores.pronunciation);
-            nonverbalScores.actualSpeedScores.push(item.evaluation.spm);
+        if (item.nonverbal_scores) {  
+            console.log(`Question ${index + 1} nonverbal scores:`, item.nonverbal_scores);  // 로그 추가
+            
+            nonverbalScores.stutterScores.push(item.nonverbal_scores.stuttering || 0);
+            nonverbalScores.speedScores.push(item.nonverbal_scores.speaking_speed || 0);
+            nonverbalScores.pronunciationScores.push(item.nonverbal_scores.pronunciation || 0);
+            nonverbalScores.actualSpeedScores.push(item.spm || 0);
+        }else {
+            console.log(`Question ${index + 1} has no nonverbal scores`);  // 로그 추가
         }
     });
 
@@ -476,29 +479,6 @@ function calculateAverage(arr) {
     return arr.reduce((sum, val) => sum + val, 0) / arr.length;
 }
 
-async function fetchInterviewData() {
-    try {
-        const response = await fetch(`/api/interview-report/${resumeId}/`);
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.error || 'Failed to fetch interview data');
-        }
-
-        console.log('Received data:', data);  // 디버깅용
-
-        // 데이터 검증 부분만 수정
-        if (!data.questions || data.questions.length === 0) {
-            alert("평가 데이터가 아직 생성되지 않았습니다. 잠시 후 다시 시도해주세요.");
-            return;  // 함수 종료
-        }
-
-    } catch (error) {
-        console.error('Error:', error);
-        throw new Error('No interview data found');  // 기존 에러 메시지 유지
-    }
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // 날짜 표시
@@ -506,10 +486,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // URL에서 user_id 추출
         const pathParts = window.location.pathname.split('/');
-        const resume_id = 1;
+        const resumeId = pathParts[pathParts.indexOf('interview-report') + 1];
+        // const resume_id = 1;
 
         // API 호출
-        const response = await fetch(`/api/interview-report/1/`);
+        // const response = await fetch(`/api/interview-report/1/`);
+        const response = await fetch(`/api/interview-report/${resumeId}/`);
         if (!response.ok) {
             throw new Error('Failed to fetch interview data');
         }
@@ -517,11 +499,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         const result = await response.json();
         console.log('Received data:', result);
 
-        if (!result.data || !result.data.questions || result.data.questions.length === 0) {
-            throw new Error('No interview data found');
+        // 데이터 구조 검증을 단계별로 수행
+        if (!result) {
+            throw new Error('No data received');
         }
 
-        const questions = result.data.questions;  // 실제 질문 데이터 배열
+        if (!result.questions) {
+            throw new Error('No questions array found');
+        }
+
+        if (result.questions.length === 0) {
+            throw new Error('Questions array is empty');
+        }
+
+        const questions = result.questions;
 
         // 질문 카드 렌더링
         const container = document.getElementById('questionContainer');
@@ -530,16 +521,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <div class="question-card">
                     <div class="question-header">
                         <h4>Q${index + 1}. ${item.question_text}</h4>
-                        <div class="total-score">${item.evaluation?.total_score || '점수 없음'}/50</div>
+                        <div class="total-score">${item.total_score || '점수 없음'}/50</div>
                     </div>
                     <div class="answer-box">
                         <p class="answer-label">답변 내용</p>
-                        <p class="answer-content">${item.summarized_text || '답변 없음'}</p> 
+                        <p class="answer-content">${item.summarized_text || item.answer_text || '답변 없음'}</p> 
                     </div>
                     <div class="analysis-container" style="display: flex; gap: 20px;">
                         <div class="metrics-section" style="flex: 1;">
                             <div class="metrics-box" style="height: 300px;">
-                                ${item.evaluation?.scores ? 
+                                ${item.scores ? 
                                     `<canvas id="radarChart${index}"></canvas>` : 
                                     '<p>평가 데이터가 없습니다.</p>'}
                             </div>
@@ -548,17 +539,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div class="improvement-box" style="margin-bottom: 5px;"> 
                                 <div class="score-feedback">
                                     <p class="improvement" style="margin-bottom: 5px;">💡 평가 지표 개선사항:</p> 
-                                    ${item.evaluation?.improvements ? 
-                                        item.evaluation.improvements.map(imp => `<p>- ${imp}</p>`).join('') : 
+                                    ${item.improvements ? 
+                                        item.improvements.map(imp => `<p>- ${imp}</p>`).join('') : 
                                         '<p>개선사항 없음</p>'}
                                 </div>
                             </div>
-                            ${item.evaluation?.nonverbal_improvements ? `
+                            ${item.nonverbal_improvements ? `
                             <div class="improvement-box">
                                 <div class="score-feedback">
                                     <p class="improvement" style="margin-bottom: 5px;">💡비언어적 개선사항:</p>
-                                    ${item.evaluation.nonverbal_improvements.length > 0 ? 
-                                        item.evaluation.nonverbal_improvements.map(imp => `<p>- ${imp}</p>`).join('') : 
+                                    ${item.nonverbal_improvements.length > 0 ? 
+                                        item.nonverbal_improvements.map(imp => `<p>- ${imp}</p>`).join('') : 
                                         '<p>개선사항 없음</p>'}
                                 </div>
                             </div>
@@ -571,17 +562,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // 레이더 차트 생성
         questions.forEach((item, index) => {
-            if (item.evaluation?.scores) {
+            if (item.scores) {
                 const scores = [
-                    item.evaluation.scores.question_understanding || 0,
-                    item.evaluation.scores.logical_flow || 0,
-                    item.evaluation.scores.content_specificity || 0,
-                    item.evaluation.scores.problem_solving || 0,
-                    item.evaluation.scores.organizational_fit || 0
+                    item.scores.question_understanding || 0,
+                    item.scores.logical_flow || 0,
+                    item.scores.content_specificity || 0,
+                    item.scores.problem_solving || 0,
+                    item.scores.organizational_fit || 0
                 ];
                 createRadarChart(`radarChart${index}`, scores);
             }
         });
+
 
         // 비언어적 평가 차트 생성 (updateOverallEvaluation 전에 호출)
         createGaugeCharts(questions);

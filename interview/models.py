@@ -5,8 +5,8 @@ from django.db import models
 class JobPosting(models.Model):
     company_name = models.CharField(max_length=255)
     job_title = models.CharField(max_length=255)
-    responsibilities = models.TextField(default="") # 담당 업무
-    qualifications = models.TextField(default="") # 지원 자격
+    responsibilities = models.TextField(default="")
+    qualifications = models.TextField(default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -14,16 +14,16 @@ class JobPosting(models.Model):
 
 
 class Resume(models.Model):
-    name = models.CharField(max_length=100) # 지원자 이름
-    phone = models.CharField(max_length=15) # 연락처
-    email = models.EmailField() # 이메일
+    name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=15) 
+    email = models.EmailField()
     
     project_experience = models.TextField(default="")
     problem_solving = models.TextField(default="")
     teamwork_experience = models.TextField(default="")
     self_development = models.TextField(default="")
 
-    job_posting = models.ForeignKey(JobPosting, on_delete=models.SET_NULL, null=True, blank=True) # 지원공고 연결
+    job_posting = models.ForeignKey(JobPosting, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -34,8 +34,8 @@ class Question(models.Model):
     resume = models.ForeignKey(Resume, on_delete=models.CASCADE, null=True)
     text = models.TextField(default="")
     category = models.CharField(max_length=100)
-    order = models.IntegerField() # 질문 순서
-    is_used = models.BooleanField(default=False) # 사용 여부
+    order = models.IntegerField()
+    is_used = models.BooleanField(default=False)
     job_posting = models.ForeignKey('JobPosting', on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -53,8 +53,8 @@ class Question(models.Model):
 class Answer(models.Model):
     resume = models.ForeignKey(Resume, on_delete=models.CASCADE, null=True)
     question = models.ForeignKey(Question, on_delete=models.CASCADE, null=True)
-    audio_url = models.URLField(null=True, blank=True)  # S3에 저장된 음성 파일 URL 
-    transcribed_text = models.TextField(default="")  # Whisper로 변환된 답변 텍스트
+    audio_url = models.URLField(null=True, blank=True) 
+    transcribed_text = models.TextField(default="") 
     summarized_text = models.TextField(default="")
     created_at = models.DateTimeField(auto_now_add=True)
 

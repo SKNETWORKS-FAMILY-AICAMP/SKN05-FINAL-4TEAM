@@ -54,49 +54,6 @@ def count_syllable(text):
     return count
 
 
-
-# def detection(audio_path, silence_thresh=-40, min_silence_len=1000):
-#     '''실제 스피치 시간을 측정하는 함수'''
-#     AudioSegment.converter = which("ffmpeg")
-    
-#     try:
-#         # 음성 파일 불러오기
-#         if audio_path.startswith("http"):
-#             try:
-#                 response = requests.get(audio_path)
-#                 if response.status_code != 200:
-#                     print(f"Failed to download audio: {response.status_code}")
-#                     return 0
-#                 audio_file = io.BytesIO(response.content)
-#             except Exception as e:
-#                 print(f"Error downloading audio: {e}")
-#                 return 0
-#         else:
-#             audio_file = audio_path
-
-#         # 실제 스피치 시간 구하기
-#         audio = AudioSegment.from_file(audio_file, format="wav")\
-#                 .set_frame_rate(16000)\
-#                 .set_channels(1)
-        
-#         nonsilent_ranges = detect_nonsilent(
-#             audio, 
-#             min_silence_len=min_silence_len, 
-#             silence_thresh=silence_thresh
-#         )
-        
-#         if not nonsilent_ranges:  # 무음 구간이 없는 경우 처리
-#             return len(audio) / 1000
-            
-#         speech_segments = [end / 1000 - start / 1000 for start, end in nonsilent_ranges]
-#         total_speech = sum(speech_segments)
-
-#         return total_speech
-
-#     except Exception as e:
-#         print(f"Error in detection: {str(e)}")
-#         return 0
-
 def detection(audio_path, silence_thresh=-40, min_silence_len=1000):
     '''실제 스피치 시간을 측정'''
     AudioSegment.converter = which("ffmpeg")
@@ -105,29 +62,34 @@ def detection(audio_path, silence_thresh=-40, min_silence_len=1000):
         # 음성 파일 불러오기
         if audio_path.startswith("http"):
             try:
-                response = requests.get(audio_path)
-                if response.status_code != 200:
-                    print(f"Failed to download audio: {response.status_code}")
-                    return 0
-                    
-                # 임시 AudioSegment 생성 후 WAV로 재변환
-                temp_seg = AudioSegment.from_file(io.BytesIO(response.content))
+                response = requests.get(audio_path, timeout=10, stream=True)
+                response.raise_for_status()
+                
+                audio_data = io.BytesIO()
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        audio_data.write(chunk)
+                audio_data.seek(0)
+                
+                temp_seg = AudioSegment.from_file(audio_data)
                 buffer = io.BytesIO()
-                temp_seg.export(buffer, format="wav")  # WAV 형식으로 재인코딩
+                temp_seg.export(buffer, format="wav", parameters=["-ac", "1", "-ar", "16000"])
                 buffer.seek(0)
                 audio_file = buffer
                 
+            except requests.exceptions.RequestException as e:
+                print(f"Error downloading audio: {str(e)}")
+                return 0
             except Exception as e:
-                print(f"Error downloading audio: {e}")
+                print(f"Error processing audio data: {str(e)}")
                 return 0
         else:
             audio_file = audio_path
 
         # 실제 스피치 시간 구하기
         try:
-            audio = AudioSegment.from_file(audio_file, format="wav")\
-                    .set_frame_rate(16000)\
-                    .set_channels(1)
+            audio = AudioSegment.from_file(audio_file, format="wav")
+            audio = audio.set_frame_rate(16000).set_channels(1)
             
             nonsilent_ranges = detect_nonsilent(
                 audio, 
@@ -144,7 +106,7 @@ def detection(audio_path, silence_thresh=-40, min_silence_len=1000):
             return total_speech
 
         except Exception as e:
-            print(f"Error processing audio: {e}")
+            print(f"Error processing audio: {str(e)}")
             return 0
 
     except Exception as e:
@@ -153,153 +115,155 @@ def detection(audio_path, silence_thresh=-40, min_silence_len=1000):
 
 
 def stutter(text):
-  '''말더듬 체크'''
-  prompt = f"""
-  다음은 말더듬의 유형입니다.
-  ==말더듬 유형==
-  1. 단어 일부 반복
-  예시: 아니, 가..강요한 우리 잘못이래잖아?
+    '''말더듬 체크'''
+    prompt = f"""
+    면접자의 답변에서 말더듬 유형을 분석하여 정확히 아래 JSON 형식으로만 응답하세요.
 
-  2. 단음절 단어 반복
-  예시: 나는 진짜 옷, 옷 안 샀어.
+    === 말더듬 유형 분류 기준 ===
+    1. 단어 일부 반복: "가..강요한" 처럼 단어의 일부분을 반복
+    2. 단음절 단어 반복: "옷, 옷" 처럼 한 음절 단어를 반복
+    3. 장음화: "디자인---" 처럼 음절을 길게 늘임
+    4. 수정 반복: "열, 약" 처럼 단어를 바꾸어 말함
+    5. 다음절 단어 반복: "진짜, 진짜" 처럼 두 음절 이상 단어를 반복
+    6. 구 반복: "중학교 때, 중학교 때" 처럼 구절을 반복
+    7. 군말 삽입: "그~", "막~" 같은 군말을 삽입
 
-  3. 장음화
-  예시: 디자인---까진 모르겠어.
+    === 분석할 면접자 답변 ===
+    {text}
 
-  4. 수정 반복
-  예시: 근데 그게 사람에게 열, 약, 결점을 보완하기 위해 준 능력이란 말이야?
+    === 응답 형식 ===
+    다음 JSON 형식으로 정확히 응답하세요:
+    {{
+        "총 카운트": 발견된 말더듬 총 횟수(정수),
+        "말더듬 유형": [발견된 말더듬 유형들의 배열]
+    }}
 
-  5. 다음절 단어 반복
-  예시: 근데 진짜, 진짜 햄 그런 거 하나도 안 주고, 빵이랑 쨈만 줘.
+    다른 설명이나 추가 텍스트 없이 JSON만 반환하세요.
+    """
 
-  6. 구 반복
-  예시: 중학교 때, 중학교 때 얘가 진짜 뚱뚱했었거든?
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = openai.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "당신은 말더듬 분석 전문가입니다. 정확한 JSON 형식으로만 응답합니다."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            
+            # 응답 형식 검증
+            if isinstance(result, dict) and "총 카운트" in result and "말더듬 유형" in result:
+                return result
 
-  7. 군말 삽입
-  예시: 사형수들을 실미도로 데려가서, 진짜 인간들이 할 수 없는 그런, 막~ 그~ 교육을 시키는데...
+            raise json.JSONDecodeError("Invalid JSON structure", "", 0)
 
-
-  주어진 면접자의 답변에 대해서 말더듬 유형을 체크해서 카운팅을 해라.
-  면접자 답변: {text}
-
-
-  ==반환 형식==
-  총 카운트와 말더듬 유형을 JSON 형식으로 반환해라.
-  한국어만 사용해라.
-  (총 카운트와 체크된 말더듬 유형을 제외한 그 어떤 문자열도 반환하지 마라.)
-  """
-
-  # 평가 생성
-  while True:
-    try:
-      response = openai.chat.completions.create(
-        model="gpt-4",
-        messages=[
-          {"role": "system", "content": "당신은 유능한 음성 분석 전문가입니다."},
-          {"role": "user", "content": prompt}
-          ],
-        temperature=0.0
-        )
-        
-      result = json.loads(response.choices[0].message.content)
-      
-      return result
-
-    except json.JSONDecodeError:
-        prompt += "\n\n JSON 형식으로 다시 반환해주세요."
-        stutter(text)
+        except json.JSONDecodeError:
+            if attempt == max_retries - 1:
+                return {"총 카운트": 0, "말더듬 유형": []}
+            prompt += "\n\n JSON 형식으로 다시 반환해주세요."
 
 
 
 def audio_analysis(audio_path):
-  '''비언어적 요소 평가 모델'''
-  openai.api_key = settings.OPENAI_API_KEY
+    '''비언어적 요소 평가 모델'''
+    openai.api_key = settings.OPENAI_API_KEY
 
-  audio_data = audio_to_text(audio_path)
-  total_speech = detection(audio_path)
+    audio_data = audio_to_text(audio_path)
+    total_speech = detection(audio_path)
 
-  # 발음
-  logprob, compression = [], []
-  for seg in audio_data['segments']:
-    logprob.append(seg['avg_logprob'])
-    compression.append(seg['compression_ratio'])
-  logprob, compression = np.mean(logprob), np.mean(compression)
-  logprob_score = (logprob+1)*100
-  compression_score = 100-(np.abs(compression-1))*50
-  pronunciation_score= (logprob_score + compression_score) / 2
+    # 발음
+    logprob, compression = [], []
+    for seg in audio_data['segments']:
+        logprob.append(seg['avg_logprob'])
+        compression.append(seg['compression_ratio'])
+    logprob, compression = np.mean(logprob), np.mean(compression)
+    logprob_score = (logprob+1)*100
+    compression_score = 100-(np.abs(compression-1))*50
+    pronunciation_score= (logprob_score + compression_score) / 2
 
+    # 빠르기
+    syllable_count = count_syllable(audio_data['transcription'])
+    SPM = (syllable_count / total_speech) * 60
 
-  # 빠르기
-  syllable_count = count_syllable(audio_data['transcription'])
-  SPM = (syllable_count / total_speech) * 60
-
-
-  # 말더듬
-  stutter_result = stutter(audio_data['transcription'])
+    # 말더듬
+    stutter_result = stutter(audio_data['transcription'])
 
 
-  # 프롬프트 작성
-  prompt = f"""
-  면접자의 음성에 대한 평가 지표가 다음과 같이 주어진다.
-  이를 바탕으로 면접자를 평가하고, 필요하다면 개선사항을 제시해라.
-  이때 점수에 따른 평가 내용은 일관성을 유지해라.
+    # 프롬프트 작성
+    prompt = f"""
+    면접자의 음성을 평가하고 정확히 아래 JSON 형식으로만 응답하세요.
 
+    === 평가 기준 ===
+    1. 발음 점수: {round(pronunciation_score)}/100점
+    2. 말하기 속도: {SPM} SPM
+    3. 말더듬 횟수: {stutter_result['총 카운트']}회
+    4. 말더듬 유형: {stutter_result['말더듬 유형']}
 
-  === 평가 지표 ===
-  1. 발음 (0~100점)
-  면접자의 발음 점수: {round(pronunciation_score)}
-  발음 점수를 바탕으로 평가해라.
+    === 응답 형식 ===
+    다음 JSON 형식으로 정확히 응답하세요:
+    {{
+        "발음": {{
+            "점수": 0-100 사이 정수,
+            "평가": "한 문장으로 된 평가",
+            "개선사항": "한 문장으로 된 개선사항"
+        }},
+        "빠르기": {{
+            "점수": 0-10 사이 정수,
+            "평가": "한 문장으로 된 평가",
+            "개선사항": "한 문장으로 된 개선사항"
+        }},
+        "말더듬": {{
+            "점수": 0-10 사이 정수,
+            "평가": "한 문장으로 된 평가",
+            "개선사항": "한 문장으로 된 개선사항"
+        }}
+    }}
 
-  2. 빠르기 (0~10점)
-  - 10점: SPM이 353~357 범위에 있는 경우 (아주 적당한 말 빠르기)
-  - 8~9점: SPM이 348.5~363.5 범위에 있는 경우 (일반적인 말 빠르기)
-  - 6~7점: SPM이 263~348.5 범위에 있는 경우 (약간 느린 말 빠르기) 또는 363.5~395 범위에 있는 경우 (약간 빠른 말 빠르기)
-  - 0~5점: SPM이 263보다 작은 경우 (매우 느린 말 빠르기) 또는 395보다 큰 경우 (매우 빠른 말 빠르기)
-  (특히 0~5점 구간대에 해당한다면, 스스로 합리적으로 판단하여 그 구간 내의 적절한 점수를 부과해라)
-  면접자의 SPM: {SPM}
-  면접자의 SPM과 위의 평가 기준을 바탕으로 평가해라.
+    === 점수 기준 ===
+    1. 빠르기 점수:
+        - 10점: SPM 353~357
+        - 8~9점: SPM 348.5~363.5
+        - 6~7점: SPM 263~348.5 또는 363.5~395
+        - 0~5점: SPM < 263 또는 SPM > 395
 
-  3. 말더듬 (0~10점)
-  - 10점: 말더듬 횟수가 0회인 경우
-  - 8~9점: 말더듬 횟수가 1회인 경우
-  - 6~7점: 말더듬 횟수가 2회인 경우
-  - 0~5점: 말더듬 횟수가 3회 이상인 경우
-  (특히 0~5점 구간대에 해당한다면, 스스로 합리적으로 판단하여 그 구간 내의 적절한 점수를 부과해라)
-  면접자의 말더듬 횟수: {stutter_result['총 카운트']}
-  면접자의 말더듬 유형: {stutter_result['말더듬 유형']}
-  면접자의 말더듬과 위의 평가 기준을 바탕으로 평가해라.
+    2. 말더듬 점수:
+        - 10점: 0회
+        - 8~9점: 1회
+        - 6~7점: 2회
+        - 0~5점: 3회 이상
 
+    위 형식과 기준을 정확히 따라 평가해주세요.
+    다른 설명이나 추가 텍스트 없이 JSON만 반환하세요.
+    """
 
+    # 평가 생성 
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = openai.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "당신은 유능한 음성 분석 전문가입니다."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5
+            )
+            
+            final_result = json.loads(response.choices[0].message.content)
+            return final_result, SPM
 
-  === 평가 결과 ===
-  다음 형식을 따라 평가 결과를 JSON 타입으로 반환해라.
-  한국어만 사용해라.
-  평가에 기술 용어들의 언급은 피하고, 사용자 친화적인 용어들로 평가를 해라.
-  (발음, 빠르기, 말더듬을 제외한 그 어떤 문자열도 반환하지 마라.)
-
-  발음: 평가 내용, 점수, (필요한 경우)개선사항
-  빠르기: 평가 내용, 점수, (필요한 경우)개선사항
-  말더듬: 평가 내용, 점수, (필요한 경우)개선사항
-  """
-
-  # 평가 생성
-  while True:
-    try:
-      response = openai.chat.completions.create(
-        model="gpt-4",
-        messages=[
-          {"role": "system", "content": "당신은 유능한 음성 분석 전문가입니다."},
-          {"role": "user", "content": prompt}
-          ],
-        temperature=0.5
-        )
-        
-      final_result = json.loads(response.choices[0].message.content)
-      
-      return final_result, SPM
-
-    except json.JSONDecodeError:
-        prompt += "\n\n JSON 형식으로 다시 반환해주세요."
+        except json.JSONDecodeError:
+            if attempt == max_retries - 1: 
+                return {
+                    "발음": {"점수": round(pronunciation_score), "평가": "평가 실패", "개선사항": "재평가 필요"},
+                    "빠르기": {"점수": 5, "평가": "평가 실패", "개선사항": "재평가 필요"},
+                    "말더듬": {"점수": 5, "평가": "평가 실패", "개선사항": "재평가 필요"}
+                }, SPM
+            prompt += "\n\n JSON 형식으로 다시 반환해주세요."
 
 
 
@@ -307,7 +271,6 @@ def generate_q(resume_text, responsibilities, qualifications, evaluation_metrics
     '''질문 생성 모델'''
     openai.api_key = settings.OPENAI_API_KEY
     
-    # 프롬프트 작성
     prompt = f"""
     아래는 지원자의 이력서 내용과 회사의 담당 업무 및 지원 자격입니다.
     이를 바탕으로 면접 질문을 생성하세요. 
@@ -406,40 +369,17 @@ s3_client = boto3.client(
     region_name=region
 )
 
-# def upload_to_s3(file_path, s3_key): 윤관님 코드
-#     """
-#     로컬 파일을 AWS S3에 업로드하는 함수
-#     :param file_path: 로컬 파일 경로
-#     :param s3_key: S3 버킷 내 저장될 파일 경로 (예: 'audio/recording.wav')
-#     :return: S3 URL (업로드된 파일의 URL)
-#     """
-#     try:
-#         s3_client.upload_file(file_path, AWS_STORAGE_BUCKET_NAME, s3_key)
-#         s3_client.put_object_acl(
-#            Bucket=AWS_STORAGE_BUCKET_NAME,
-#            Key=s3_key,
-#            ACL="public-read"  # 🔥 퍼블릭 읽기 권한 부여
-#         )
-#         return f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{region}.amazonaws.com/{s3_key}"
-#     except Exception as e:
-#         print(f"S3 업로드 실패: {e}")
-#         return None
-
 def upload_to_s3(file_path, s3_key):
     """
     로컬 파일을 AWS S3에 업로드하는 함수
-    :param file_path: 로컬 파일 경로
-    :param s3_key: S3 버킷 내 저장될 파일 경로 (예: 'audio/recording.wav')
-    :return: S3 URL (업로드된 파일의 URL)
     """
     try:
-        # WAV 파일 검증 및 설정
         extra_args = {
-            'ContentType': 'audio/wav',  # WAV 파일 타입 명시
-            'ACL': 'public-read',  # 퍼블릭 읽기 권한
+            'ContentType': 'audio/wav',
+            'ACL': 'public-read',
+            'CacheControl': 'no-cache' 
         }
 
-        # 파일 업로드 (ExtraArgs로 설정 전달)
         s3_client.upload_file(
             file_path, 
             AWS_STORAGE_BUCKET_NAME, 
@@ -447,10 +387,16 @@ def upload_to_s3(file_path, s3_key):
             ExtraArgs=extra_args
         )
 
-        return f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{region}.amazonaws.com/{s3_key}"
+        url = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{region}.amazonaws.com/{s3_key}"
+        response = requests.head(url)
+        if response.status_code != 200:
+            print(f"Uploaded file is not accessible: {response.status_code}")
+            return None
+            
+        return url
         
     except Exception as e:
-        print(f"S3 업로드 실패: {e}")
+        print(f"S3 업로드 실패: {str(e)}")
         return None
 
 
